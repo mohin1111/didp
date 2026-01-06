@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* AG Grid Theme Customization */
+.ag-theme-alpine {
+  --ag-header-background-color: #f1f5f9;
+  --ag-odd-row-background-color: #ffffff;
+  --ag-row-hover-color: #eef2ff;
+  --ag-selected-row-background-color: #e0e7ff;
+  --ag-range-selection-border-color: #6366f1;
+  --ag-range-selection-background-color: rgba(99, 102, 241, 0.1);
+  --ag-font-family: ui-sans-serif, system-ui, sans-serif;
+  --ag-font-size: 14px;
+  --ag-grid-size: 6px;
+  --ag-row-height: 36px;
+  --ag-header-height: 40px;
+}
+
+.ag-theme-alpine .ag-header-cell {
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+
+.ag-theme-alpine .ag-cell {
+  display: flex;
+  align-items: center;
+}
+
+/* Toast animation */
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+/* Progress bar animation */
+@keyframes progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.animate-progress {
+  animation: progress 2s ease-in-out;
+}
