@@ -1,73 +1,149 @@
-# React + TypeScript + Vite
+# DIDP - Data Integration & Processing Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern React application for trading and settlement operations, featuring a modular architecture with SQL querying, Excel import/export, Python scripting, and data visualization capabilities.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Master Data Management** - Browse and filter 21+ financial data tables (trades, settlements, positions, etc.)
+- **SQL Query Editor** - Execute SQL queries against loaded tables with schema browser
+- **Python Scripting** - Run Python scripts for data processing (simulated)
+- **Excel Integration** - Import from and export to Excel files (.xlsx, .xls, .csv)
+- **Data Visualization** - Interactive charts (bar, line, area, pie) with Recharts
+- **Process Chaining** - Chain multiple operations together for batch processing
+- **Cell Selection & Comparison** - Select cells across tables, compare rows side-by-side
+- **Formula Builder** - Excel-like formula support with cell references
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **React 19** with TypeScript
+- **Vite** for fast development and building
+- **Tailwind CSS** for styling
+- **Recharts** for data visualization
+- **XLSX** for Excel file handling
+- **Lucide React** for icons
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+```bash
+# Install dependencies
+npm install
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# Start development server
+npm run dev
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+# Build for production
+npm run build
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Preview production build
+npm run preview
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Architecture
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+The application follows a modular architecture with all files under 300 lines for maintainability.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+src/components/BackofficeOperations/
+├── index.tsx                    # Main entry point (100 lines)
+├── context/
+│   └── BackofficeContext.tsx    # React Context provider (245 lines)
+├── hooks/                       # Custom hooks for state management
+│   ├── useTableState.ts         # Table selection & expansion
+│   ├── useCellState.ts          # Cell selection & comparison
+│   ├── useFilterState.ts        # Column filtering
+│   ├── useFormulaState.ts       # Formula management
+│   ├── useProcessState.ts       # Process execution & chaining
+│   ├── useImportState.ts        # Excel import handling
+│   ├── useSqlPythonState.ts     # SQL & Python execution
+│   ├── useModalState.ts         # Modal visibility
+│   ├── useChartState.ts         # Chart configuration
+│   └── useExportState.ts        # Excel export functions
+├── sections/                    # Main UI panels
+│   ├── MasterDataSection.tsx    # Left panel - data sources (34%)
+│   ├── ProcessingSection.tsx    # Center panel - operations (36%)
+│   └── OutputSection.tsx        # Right panel - results (30%)
+├── modals/                      # Modal components
+│   ├── FullViewModal.tsx        # Full table view
+│   ├── CompareModal.tsx         # Row comparison
+│   ├── ChartModal.tsx           # Chart visualization
+│   ├── SaveProcessModal.tsx     # Save process config
+│   ├── LoadProcessModal.tsx     # Load saved processes
+│   ├── SchemaModal.tsx          # SQL schema browser
+│   ├── PythonModal.tsx          # Full Python editor
+│   └── ImportModal.tsx          # Excel import wizard
+├── shared/                      # Reusable components
+│   ├── TableRenderer.tsx        # Data table with filtering
+│   ├── ChartRenderer.tsx        # Chart component
+│   └── StatusBadge.tsx          # Status indicator
+├── data/                        # Static data
+│   ├── masterTables.ts          # 21 table definitions
+│   ├── processes.ts             # 10 process definitions
+│   ├── excelFormulas.ts         # Formula reference
+│   └── constants.ts             # Colors, chart colors
+├── types/                       # TypeScript definitions
+│   ├── tables.ts                # Table types
+│   ├── cells.ts                 # Cell selection types
+│   ├── formulas.ts              # Formula types
+│   └── processes.ts             # Process types
+└── utils/                       # Utility functions
+    ├── sqlUtils.ts              # SQL query execution
+    ├── excelUtils.ts            # Excel export functions
+    ├── formulaEvaluator.ts      # Formula evaluation
+    ├── chartUtils.ts            # Chart data preparation
+    └── formatters.ts            # Value formatting
+```
+
+## Key Components
+
+### Context & State Management
+
+The app uses React Context with custom hooks for state management:
+
+```tsx
+import { useBackoffice } from './context/BackofficeContext';
+
+function MyComponent() {
+  const { selectedTables, sqlOutput, executeSqlQuery } = useBackoffice();
+  // ...
+}
+```
+
+### Available Data Tables
+
+| Category | Tables |
+|----------|--------|
+| Trading | Day Trades, Trade Blotter, Order Book |
+| Settlement | Settlements, Failed Trades, Pending Settlements |
+| Positions | Positions, Cash Balances |
+| Reference | Securities Master, Counterparties, Accounts |
+| Corporate Actions | Dividends, Stock Splits, Mergers |
+| Compliance | Compliance Alerts, Audit Log |
+| Risk | Margin Calls, Collateral |
+
+### Processing Modes
+
+1. **Operations** - Pre-built processes (EOD, reconciliation, matching)
+2. **SQL Query** - Write and execute SQL against loaded tables
+3. **Python** - Run Python scripts for custom processing
+4. **Excel** - Build formulas with cell references
+
+## Development
+
+### File Size Guidelines
+
+All component files are kept under 300 lines for:
+- Better readability and maintenance
+- Faster Hot Module Replacement (HMR)
+- Easier code reviews
+- Improved testability
+
+### Adding New Features
+
+1. **New Hook** - Add to `hooks/` directory
+2. **New Modal** - Add to `modals/` and export from `modals/index.ts`
+3. **New Data Table** - Add definition to `data/masterTables.ts`
+4. **New Process** - Add to `data/processes.ts`
+
+## License
+
+MIT
