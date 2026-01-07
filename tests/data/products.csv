@@ -1,0 +1,11 @@
+ProductID,Name,Category,Price,Stock,Discount
+P001,Laptop Pro,Electronics,1299.99,50,0.10
+P002,Wireless Mouse,Accessories,29.99,200,0.05
+P003,Mechanical Keyboard,Accessories,89.99,150,0.08
+P004,4K Monitor,Electronics,449.99,75,0.12
+P005,USB-C Hub,Accessories,49.99,300,0.05
+P006,Webcam HD,Electronics,79.99,120,0.10
+P007,Headset Pro,Accessories,149.99,100,0.15
+P008,External SSD,Electronics,129.99,180,0.08
+P009,Mouse Pad XL,Accessories,19.99,500,0.00
+P010,Monitor Stand,Accessories,59.99,90,0.05
