@@ -27,3 +27,34 @@ npm-debug.log*
 # Cache
 .cache/
 .eslintcache
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+*.egg
+.venv/
+venv/
+ENV/
+
+# Database
+*.db
+*.sqlite3
+
+# Test artifacts
+test-results/
+playwright-report/
+test_*.png
+test_*.js
+workflow_*.png
+*.xlsx.tmp
+
+# Temp files
+*.tmp
+*.temp
+.coverage
+htmlcov/
