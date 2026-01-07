@@ -1,4 +1,5 @@
-import { X, Bookmark, Save } from 'lucide-react';
+import { useState } from 'react';
+import { X, Bookmark, Save, Loader2 } from 'lucide-react';
 import { useBackoffice } from '../context/BackofficeContext';
 import { processes } from '../data';
 
@@ -15,9 +16,25 @@ export default function SaveProcessModal() {
     saveCurrentProcess,
   } = useBackoffice();
 
+  const [isSaving, setIsSaving] = useState(false);
+
   if (!showSaveModal) return null;
 
   const currentProcess = processes.find(p => p.id === selectedProcess);
+
+  const handleSave = async () => {
+    if (!newProcessName.trim()) return;
+
+    setIsSaving(true);
+    try {
+      await saveCurrentProcess();
+      setShowSaveModal(false);
+    } catch (error) {
+      console.error('Error saving process:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-8">
@@ -34,7 +51,8 @@ export default function SaveProcessModal() {
           </div>
           <button
             onClick={() => setShowSaveModal(false)}
-            className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+            disabled={isSaving}
+            className="p-2 hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
           >
             <X size={20} className="text-slate-400" />
           </button>
@@ -48,7 +66,8 @@ export default function SaveProcessModal() {
               value={newProcessName}
               onChange={(e) => setNewProcessName(e.target.value)}
               placeholder="e.g., Daily Trade Reconciliation"
-              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"
+              disabled={isSaving}
+              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500 disabled:opacity-50"
             />
           </div>
           <div>
@@ -58,7 +77,8 @@ export default function SaveProcessModal() {
               onChange={(e) => setNewProcessDescription(e.target.value)}
               placeholder="Brief description of this process..."
               rows={3}
-              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500 resize-none"
+              disabled={isSaving}
+              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500 resize-none disabled:opacity-50"
             />
           </div>
           <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
@@ -77,17 +97,18 @@ export default function SaveProcessModal() {
         <div className="flex justify-end gap-2 p-4 border-t border-slate-700">
           <button
             onClick={() => setShowSaveModal(false)}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm"
+            disabled={isSaving}
+            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 rounded-lg text-sm"
           >
             Cancel
           </button>
           <button
-            onClick={saveCurrentProcess}
-            disabled={!newProcessName.trim()}
+            onClick={handleSave}
+            disabled={!newProcessName.trim() || isSaving}
             className="px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm flex items-center gap-2"
           >
-            <Save size={14} />
-            Save Process
+            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            {isSaving ? 'Saving...' : 'Save Process'}
           </button>
         </div>
       </div>

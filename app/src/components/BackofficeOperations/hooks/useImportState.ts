@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
-import * as XLSX from 'xlsx';
 import type { TableDataOverrides } from '../types';
+import { importsApi, type UploadResponse } from '../api';
 
 interface ImportedData {
   columns: string[];
@@ -11,97 +11,164 @@ interface ImportedData {
 
 export function useImportState(
   tableDataOverrides: TableDataOverrides,
-  setTableDataOverrides: React.Dispatch<React.SetStateAction<TableDataOverrides>>,
+  _setTableDataOverrides: React.Dispatch<React.SetStateAction<TableDataOverrides>>,
   selectedTables: string[],
   setSelectedTables: React.Dispatch<React.SetStateAction<string[]>>,
   setExpandedTable: React.Dispatch<React.SetStateAction<string | null>>,
-  setPythonError: (error: string) => void
+  setPythonError: (error: string) => void,
+  refreshTables: () => void
 ) {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importedData, setImportedData] = useState<ImportedData | null>(null);
   const [importTargetTable, setImportTargetTable] = useState('');
   const [importSheets, setImportSheets] = useState<string[]>([]);
   const [selectedImportSheet, setSelectedImportSheet] = useState('');
-  const [importWorkbook, setImportWorkbook] = useState<XLSX.WorkBook | null>(null);
   const [importFileName, setImportFileName] = useState('');
+  const [hasHeaders, setHasHeaders] = useState(true);
+  const [customColumnNames, setCustomColumnNames] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadResponse, setUploadResponse] = useState<UploadResponse | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadSheetData = useCallback((workbook: XLSX.WorkBook, sheetName: string, fileName: string) => {
-    const worksheet = workbook.Sheets[sheetName];
-    if (!worksheet) return;
-
-    const jsonData = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
-    if (jsonData.length === 0) {
-      setImportedData(null);
-      return;
-    }
-
-    const headers = (jsonData[0] || []).map(h => String(h || ''));
-    const rows = jsonData.slice(1).map(row =>
-      headers.map((_, i) => String((row as string[])[i] ?? ''))
-    );
-
-    setImportedData({ columns: headers, data: rows, fileName, sheetName });
-  }, []);
-
-  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        setImportWorkbook(workbook);
-        setImportFileName(file.name);
-        setImportSheets(workbook.SheetNames);
-        setSelectedImportSheet(workbook.SheetNames[0] || '');
-        if (workbook.SheetNames.length > 0) {
-          loadSheetData(workbook, workbook.SheetNames[0], file.name);
-        }
-        setShowImportModal(true);
-      } catch (error) {
-        console.error('Error reading Excel file:', error);
-        setPythonError('Error reading Excel file.');
-      }
-    };
-    reader.readAsArrayBuffer(file);
-    event.target.value = '';
-  }, [loadSheetData, setPythonError]);
+    setIsUploading(true);
+    try {
+      const response = await importsApi.upload(file);
+      setUploadResponse(response);
+      setImportFileName(response.filename);
+      setImportSheets(response.sheets || []);
+      setSelectedImportSheet(response.sheets?.[0] || '');
+      setHasHeaders(response.has_headers);
 
-  const handleSheetChange = useCallback((sheetName: string) => {
-    setSelectedImportSheet(sheetName);
-    if (importWorkbook) {
-      loadSheetData(importWorkbook, sheetName, importFileName);
+      if (response.has_headers) {
+        setCustomColumnNames([]);
+      } else {
+        setCustomColumnNames(response.columns);
+      }
+
+      setImportedData({
+        columns: response.columns,
+        data: response.preview,
+        fileName: response.filename,
+        sheetName: response.sheets?.[0] || '',
+      });
+
+      setShowImportModal(true);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      setPythonError(error instanceof Error ? error.message : 'Error uploading file');
+    } finally {
+      setIsUploading(false);
+      event.target.value = '';
     }
-  }, [importWorkbook, importFileName, loadSheetData]);
+  }, [setPythonError]);
+
+  const handleSheetChange = useCallback(async (sheetName: string) => {
+    if (!uploadResponse) return;
+
+    setSelectedImportSheet(sheetName);
+    try {
+      const preview = await importsApi.preview(uploadResponse.file_id, sheetName, hasHeaders);
+      setImportedData({
+        columns: preview.columns,
+        data: preview.preview,
+        fileName: importFileName,
+        sheetName,
+      });
+    } catch (error) {
+      console.error('Error loading sheet:', error);
+      setPythonError(error instanceof Error ? error.message : 'Error loading sheet');
+    }
+  }, [uploadResponse, hasHeaders, importFileName, setPythonError]);
+
+  const toggleHasHeaders = useCallback(async () => {
+    if (!uploadResponse) return;
+
+    const newHasHeaders = !hasHeaders;
+    setHasHeaders(newHasHeaders);
+
+    try {
+      const preview = await importsApi.preview(
+        uploadResponse.file_id,
+        selectedImportSheet || undefined,
+        newHasHeaders
+      );
+      setImportedData(prev => prev ? {
+        ...prev,
+        columns: preview.columns,
+        data: preview.preview,
+      } : null);
+
+      if (!newHasHeaders) {
+        setCustomColumnNames(preview.columns);
+      } else {
+        setCustomColumnNames([]);
+      }
+    } catch (error) {
+      console.error('Error toggling headers:', error);
+    }
+  }, [uploadResponse, hasHeaders, selectedImportSheet]);
+
+  const updateColumnName = useCallback((index: number, name: string) => {
+    if (!importedData) return;
+
+    const newNames = [...importedData.columns];
+    newNames[index] = name;
+
+    if (!hasHeaders) {
+      setCustomColumnNames(newNames);
+    }
+    setImportedData({
+      ...importedData,
+      columns: newNames,
+    });
+  }, [importedData, hasHeaders]);
 
   const cancelImport = useCallback(() => {
     setShowImportModal(false);
     setImportedData(null);
-    setImportWorkbook(null);
+    setUploadResponse(null);
     setImportSheets([]);
     setSelectedImportSheet('');
     setImportFileName('');
     setImportTargetTable('');
+    setHasHeaders(true);
+    setCustomColumnNames([]);
   }, []);
 
-  const confirmImport = useCallback(() => {
-    if (!importedData || !importTargetTable) return;
-    setTableDataOverrides(prev => ({
-      ...prev,
-      [importTargetTable]: { columns: importedData.columns, data: importedData.data }
-    }));
-    cancelImport();
-    if (!selectedTables.includes(importTargetTable)) {
-      setSelectedTables(prev => [...prev, importTargetTable]);
-    }
-    setExpandedTable(importTargetTable);
-  }, [importedData, importTargetTable, selectedTables, cancelImport, setTableDataOverrides, setSelectedTables, setExpandedTable]);
+  const confirmImport = useCallback(async () => {
+    if (!uploadResponse || !importTargetTable) return;
 
-  const createNewTableFromImport = useCallback(() => {
-    if (!importedData) return;
+    try {
+      await importsApi.confirm({
+        fileId: uploadResponse.file_id,
+        tableKey: importTargetTable,
+        tableName: importTargetTable.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        sheetName: selectedImportSheet || undefined,
+        hasHeaders,
+        category: 'Imported',
+      });
+
+      // Refresh tables from backend
+      refreshTables();
+
+      cancelImport();
+      if (!selectedTables.includes(importTargetTable)) {
+        setSelectedTables(prev => [...prev, importTargetTable]);
+      }
+      setExpandedTable(importTargetTable);
+    } catch (error) {
+      console.error('Error confirming import:', error);
+      setPythonError(error instanceof Error ? error.message : 'Error importing data');
+    }
+  }, [uploadResponse, importTargetTable, selectedImportSheet, hasHeaders, selectedTables, cancelImport, refreshTables, setSelectedTables, setExpandedTable, setPythonError]);
+
+  const createNewTableFromImport = useCallback(async () => {
+    if (!uploadResponse) return;
+
     const baseKey = importFileName.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     let tableKey = `imported_${baseKey}`;
     let counter = 1;
@@ -109,14 +176,28 @@ export function useImportState(
       tableKey = `imported_${baseKey}_${counter}`;
       counter++;
     }
-    setTableDataOverrides(prev => ({
-      ...prev,
-      [tableKey]: { columns: importedData.columns, data: importedData.data }
-    }));
-    cancelImport();
-    setSelectedTables(prev => [...prev, tableKey]);
-    setExpandedTable(tableKey);
-  }, [importedData, importFileName, tableDataOverrides, cancelImport, setTableDataOverrides, setSelectedTables, setExpandedTable]);
+
+    try {
+      await importsApi.confirm({
+        fileId: uploadResponse.file_id,
+        tableKey,
+        tableName: tableKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        sheetName: selectedImportSheet || undefined,
+        hasHeaders,
+        category: 'Imported',
+      });
+
+      // Refresh tables from backend
+      refreshTables();
+
+      cancelImport();
+      setSelectedTables(prev => [...prev, tableKey]);
+      setExpandedTable(tableKey);
+    } catch (error) {
+      console.error('Error creating table:', error);
+      setPythonError(error instanceof Error ? error.message : 'Error creating table');
+    }
+  }, [uploadResponse, importFileName, selectedImportSheet, hasHeaders, tableDataOverrides, cancelImport, refreshTables, setSelectedTables, setExpandedTable, setPythonError]);
 
   return {
     showImportModal, setShowImportModal,
@@ -124,9 +205,12 @@ export function useImportState(
     importTargetTable, setImportTargetTable,
     importSheets, setImportSheets,
     selectedImportSheet, setSelectedImportSheet,
-    importWorkbook, setImportWorkbook,
     importFileName, setImportFileName,
+    hasHeaders, setHasHeaders,
+    customColumnNames, setCustomColumnNames,
+    isUploading,
     fileInputRef,
     handleFileSelect, handleSheetChange, confirmImport, cancelImport, createNewTableFromImport,
+    toggleHasHeaders, updateColumnName,
   };
 }

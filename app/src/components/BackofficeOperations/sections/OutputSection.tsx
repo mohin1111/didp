@@ -1,14 +1,5 @@
 import { useBackoffice } from '../context/BackofficeContext';
-import { Download, BarChart3, FileSpreadsheet } from 'lucide-react';
-
-// Simulated output results
-const outputResults = [
-  { id: 1, type: 'success', trade: 'TRD-2026-00146', message: 'Matched with counterparty DTCC - No breaks', time: '14:32:05', step: 1 },
-  { id: 2, type: 'success', trade: 'TRD-2026-00144', message: 'Matched with counterparty EUROCLEAR - No breaks', time: '14:32:06', step: 1 },
-  { id: 3, type: 'warning', trade: 'TRD-2026-00145', message: 'Quantity mismatch: Internal 1,500 vs CP 1,450', time: '14:32:07', step: 1 },
-  { id: 4, type: 'error', trade: 'TRD-2026-00143', message: 'Settlement failed - Insufficient securities', time: '14:32:08', step: 2 },
-  { id: 5, type: 'success', trade: 'TRD-2026-00142', message: 'Matched with counterparty DTCC - No breaks', time: '14:32:09', step: 1 },
-];
+import { Download, BarChart3, FileSpreadsheet, FileText } from 'lucide-react';
 
 export default function OutputSection() {
   const {
@@ -16,6 +7,7 @@ export default function OutputSection() {
     sqlOutput, sqlColumns,
     setShowChartModal, exportSqlResultsToExcel,
     selectedTables, exportAllSelectedTablesToExcel,
+    activeMatchResult,
   } = useBackoffice();
 
   return (
@@ -69,53 +61,45 @@ export default function OutputSection() {
                   </table>
                 </div>
               </div>
-            ) : (
-              <div className="space-y-2">
-                {outputResults.map(result => (
-                  <div key={result.id} className={`p-2 rounded-lg border ${
-                    result.type === 'success' ? 'bg-green-500/10 border-green-500/30' :
-                    result.type === 'warning' ? 'bg-yellow-500/10 border-yellow-500/30' :
-                    'bg-red-500/10 border-red-500/30'
-                  }`}>
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className={`font-medium ${
-                        result.type === 'success' ? 'text-green-400' :
-                        result.type === 'warning' ? 'text-yellow-400' : 'text-red-400'
-                      }`}>{result.trade}</span>
-                      <span className="text-slate-500">{result.time}</span>
-                    </div>
-                    <p className="text-xs text-slate-300 mt-0.5">{result.message}</p>
+            ) : activeMatchResult ? (
+              <div className="space-y-3">
+                <div className="text-xs text-slate-400 mb-2">Match Results: {activeMatchResult.configName}</div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/30 text-center">
+                    <div className="text-lg font-bold text-green-400">{activeMatchResult.result.matchedCount}</div>
+                    <div className="text-[10px] text-slate-500">Matched</div>
                   </div>
-                ))}
+                  <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-center">
+                    <div className="text-lg font-bold text-amber-400">{activeMatchResult.result.unmatchedSourceCount}</div>
+                    <div className="text-[10px] text-slate-500">Unmatched Src</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/30 text-center">
+                    <div className="text-lg font-bold text-red-400">{activeMatchResult.result.unmatchedTargetCount}</div>
+                    <div className="text-[10px] text-slate-500">Unmatched Tgt</div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <FileText size={32} className="text-slate-600 mb-2" />
+                <p className="text-xs text-slate-500">No results yet</p>
+                <p className="text-[10px] text-slate-600 mt-1">Run a query or match to see results</p>
               </div>
             )}
           </>
         )}
         {outputTab === 'logs' && (
-          <div className="bg-slate-900 rounded-lg p-2 font-mono text-[10px] text-slate-400 space-y-1">
-            <div><span className="text-slate-500">[14:32:01]</span> Process started: EOD Processing</div>
-            <div><span className="text-slate-500">[14:32:02]</span> Loading data from 1 table(s)</div>
-            <div><span className="text-slate-500">[14:32:03]</span> Processing 2,847 records...</div>
-            <div className="text-green-400"><span className="text-slate-500">[14:32:05]</span> Matching complete - 2,842 matched</div>
-            <div className="text-yellow-400"><span className="text-slate-500">[14:32:06]</span> Warning: 3 records with discrepancies</div>
-            <div className="text-red-400"><span className="text-slate-500">[14:32:07]</span> Error: 2 records failed validation</div>
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <FileText size={32} className="text-slate-600 mb-2" />
+            <p className="text-xs text-slate-500">No logs yet</p>
+            <p className="text-[10px] text-slate-600 mt-1">Process activity will appear here</p>
           </div>
         )}
         {outputTab === 'summary' && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: 'Total Processed', value: '2,847', color: 'blue' },
-                { label: 'Matched', value: '2,842', color: 'green' },
-                { label: 'Warnings', value: '3', color: 'yellow' },
-                { label: 'Errors', value: '2', color: 'red' },
-              ].map(stat => (
-                <div key={stat.label} className={`p-2 rounded-lg bg-${stat.color}-500/10 border border-${stat.color}-500/30`}>
-                  <div className={`text-lg font-bold text-${stat.color}-400`}>{stat.value}</div>
-                  <div className="text-[10px] text-slate-500">{stat.label}</div>
-                </div>
-              ))}
-            </div>
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <BarChart3 size={32} className="text-slate-600 mb-2" />
+            <p className="text-xs text-slate-500">No summary data</p>
+            <p className="text-[10px] text-slate-600 mt-1">Run a process to see summary</p>
           </div>
         )}
       </div>

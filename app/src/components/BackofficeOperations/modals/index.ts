@@ -6,3 +6,6 @@ export { default as LoadProcessModal } from './LoadProcessModal';
 export { default as SchemaModal } from './SchemaModal';
 export { default as PythonModal } from './PythonModal';
 export { default as ImportModal } from './ImportModal';
+export { default as ValueMappingModal } from './ValueMappingModal';
+export { default as RelationshipModal } from './RelationshipModal';
+export { default as MatchConfigModal } from './MatchConfigModal';

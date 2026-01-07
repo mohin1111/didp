@@ -1,4 +1,5 @@
-import { X, FolderOpen, Bookmark, Star, Play, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { X, FolderOpen, Bookmark, Star, Play, Trash2, Loader2 } from 'lucide-react';
 import { useBackoffice } from '../context/BackofficeContext';
 import { processes, colorClasses } from '../data';
 
@@ -9,9 +10,28 @@ export default function LoadProcessModal() {
     savedProcesses,
     loadSavedProcess,
     deleteSavedProcess,
+    isProcessesLoading,
   } = useBackoffice();
 
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
   if (!showLoadModal) return null;
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id);
+    try {
+      await deleteSavedProcess(id);
+    } catch (error) {
+      console.error('Error deleting process:', error);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleLoad = (saved: typeof savedProcesses[0]) => {
+    loadSavedProcess(saved);
+    setShowLoadModal(false);
+  };
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-8">
@@ -35,7 +55,11 @@ export default function LoadProcessModal() {
         </div>
 
         <div className="flex-1 p-4 overflow-y-auto space-y-2">
-          {savedProcesses.length === 0 ? (
+          {isProcessesLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="animate-spin text-slate-500" size={24} />
+            </div>
+          ) : savedProcesses.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
               <Bookmark size={32} className="mx-auto mb-2 opacity-50" />
               <p>No saved processes yet</p>
@@ -45,11 +69,12 @@ export default function LoadProcessModal() {
             savedProcesses.map((saved) => {
               const process = processes.find(p => p.id === saved.processId);
               const colors = colorClasses[process?.color || 'blue'];
+              const isDeleting = deletingId === saved.id;
 
               return (
                 <div
                   key={saved.id}
-                  className="p-3 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded-lg transition-colors group"
+                  className={`p-3 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded-lg transition-colors group ${isDeleting ? 'opacity-50' : ''}`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -69,18 +94,20 @@ export default function LoadProcessModal() {
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={() => loadSavedProcess(saved)}
-                        className="p-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded"
+                        onClick={() => handleLoad(saved)}
+                        disabled={isDeleting}
+                        className="p-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded disabled:opacity-50"
                         title="Load this process"
                       >
                         <Play size={14} />
                       </button>
                       <button
-                        onClick={() => deleteSavedProcess(saved.id)}
-                        className="p-1.5 hover:bg-red-500/20 text-slate-500 hover:text-red-400 rounded"
+                        onClick={() => handleDelete(saved.id)}
+                        disabled={isDeleting}
+                        className="p-1.5 hover:bg-red-500/20 text-slate-500 hover:text-red-400 rounded disabled:opacity-50"
                         title="Delete"
                       >
-                        <Trash2 size={14} />
+                        {isDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                       </button>
                     </div>
                   </div>

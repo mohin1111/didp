@@ -1,7 +1,8 @@
 import { BackofficeProvider, useBackoffice } from './context/BackofficeContext';
 import {
   FullViewModal, CompareModal, ChartModal, SaveProcessModal,
-  LoadProcessModal, SchemaModal, PythonModal, ImportModal,
+  LoadProcessModal, SchemaModal, PythonModal, ImportModal, ValueMappingModal,
+  RelationshipModal, MatchConfigModal,
 } from './modals';
 import { MasterDataSection, ProcessingSection, OutputSection } from './sections';
 import { Database, Clock, X, MousePointer2, GitCompare } from 'lucide-react';
@@ -24,6 +25,9 @@ function BackofficeContent() {
       <SchemaModal />
       <PythonModal />
       <ImportModal />
+      <ValueMappingModal />
+      <RelationshipModal />
+      <MatchConfigModal />
 
       {/* Hidden file input for Excel import */}
       <input
@@ -43,11 +47,11 @@ function BackofficeContent() {
                 <Database size={16} className="text-white" />
               </div>
               <span className="text-base lg:text-lg font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent">
-                CNSDB OPS
+                DIDP
               </span>
             </div>
             <span className="text-slate-500 hidden md:inline">|</span>
-            <span className="text-xs lg:text-sm text-slate-400 hidden md:inline">Trading & Settlement Operations</span>
+            <span className="text-xs lg:text-sm text-slate-400 hidden md:inline">Data Integration & Processing</span>
           </div>
           <div className="flex items-center gap-2 lg:gap-4">
             {selectedCells.length > 0 && (

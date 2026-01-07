@@ -10,6 +10,8 @@ import {
   useModalState,
   useChartState,
   useExportState,
+  useRelationships,
+  useMatchEngine,
 } from '../hooks';
 import type {
   CellSelection,
@@ -19,8 +21,13 @@ import type {
   DateRange,
   TableDataOverrides,
   ProcessChainStep,
+  TableRelationship,
+  ValueMapping,
+  MatchConfig,
+  MatchSummary,
+  MasterTablesMap,
 } from '../types';
-import * as XLSX from 'xlsx';
+import type { TableSummary, TableDetail } from '../api';
 
 // Context value type
 interface BackofficeContextValue {
@@ -35,6 +42,12 @@ interface BackofficeContextValue {
   tablesByCategory: Record<string, string[]>;
   tableDataOverrides: TableDataOverrides;
   setTableDataOverrides: React.Dispatch<React.SetStateAction<TableDataOverrides>>;
+  masterTables: MasterTablesMap;
+  backendTables: TableSummary[];
+  isLoading: boolean;
+  refreshTables: () => Promise<void>;
+  fetchTableData: (key: string) => Promise<TableDetail | null>;
+  deleteTable: (key: string) => Promise<void>;
 
   // Cell State
   selectedCells: CellSelection[];
@@ -97,9 +110,12 @@ interface BackofficeContextValue {
   setNewProcessDescription: React.Dispatch<React.SetStateAction<string>>;
   processConfig: Record<string, string>;
   setProcessConfig: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  saveCurrentProcess: () => void;
+  saveCurrentProcess: () => Promise<void>;
   loadSavedProcess: (process: SavedProcess) => void;
-  deleteSavedProcess: (id: number) => void;
+  deleteSavedProcess: (id: number) => Promise<void>;
+  isProcessesLoading: boolean;
+  loadSavedProcesses: () => Promise<void>;
+  saveProcessChain: (name: string, description?: string) => Promise<void>;
 
   // Modal State
   showCompareModal: boolean;
@@ -126,8 +142,8 @@ interface BackofficeContextValue {
   setChartYAxis: React.Dispatch<React.SetStateAction<number>>;
   outputView: 'table' | 'chart';
   setOutputView: React.Dispatch<React.SetStateAction<'table' | 'chart'>>;
-  processingMode: 'operations' | 'excel' | 'python' | 'sql';
-  setProcessingMode: React.Dispatch<React.SetStateAction<'operations' | 'excel' | 'python' | 'sql'>>;
+  processingMode: 'operations' | 'matching' | 'excel' | 'python' | 'sql';
+  setProcessingMode: React.Dispatch<React.SetStateAction<'operations' | 'matching' | 'excel' | 'python' | 'sql'>>;
   outputTab: string;
   setOutputTab: React.Dispatch<React.SetStateAction<string>>;
 
@@ -144,8 +160,13 @@ interface BackofficeContextValue {
   setPythonOutput: React.Dispatch<React.SetStateAction<string>>;
   pythonError: string;
   setPythonError: React.Dispatch<React.SetStateAction<string>>;
-  executeSqlQuery: () => void;
-  executePythonScript: () => void;
+  pythonResultColumns: string[];
+  setPythonResultColumns: React.Dispatch<React.SetStateAction<string[]>>;
+  pythonResultData: string[][];
+  setPythonResultData: React.Dispatch<React.SetStateAction<string[][]>>;
+  isExecuting: boolean;
+  executeSqlQuery: () => Promise<void>;
+  executePythonScript: () => Promise<void>;
 
   // Import State
   showImportModal: boolean;
@@ -158,22 +179,82 @@ interface BackofficeContextValue {
   setImportSheets: React.Dispatch<React.SetStateAction<string[]>>;
   selectedImportSheet: string;
   setSelectedImportSheet: React.Dispatch<React.SetStateAction<string>>;
-  importWorkbook: XLSX.WorkBook | null;
-  setImportWorkbook: React.Dispatch<React.SetStateAction<XLSX.WorkBook | null>>;
   importFileName: string;
   setImportFileName: React.Dispatch<React.SetStateAction<string>>;
+  hasHeaders: boolean;
+  setHasHeaders: React.Dispatch<React.SetStateAction<boolean>>;
+  customColumnNames: string[];
+  setCustomColumnNames: React.Dispatch<React.SetStateAction<string[]>>;
+  isUploading: boolean;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
   handleSheetChange: (sheetName: string) => void;
   confirmImport: () => void;
   cancelImport: () => void;
   createNewTableFromImport: () => void;
+  toggleHasHeaders: () => void;
+  updateColumnName: (index: number, name: string) => void;
 
   // Export Functions
-  exportTableToExcel: (tableKey: string) => void;
-  exportSqlResultsToExcel: () => void;
-  exportComparisonToExcel: () => void;
-  exportAllSelectedTablesToExcel: () => void;
+  exportTableToExcel: (tableKey: string) => Promise<void>;
+  exportSqlResultsToExcel: () => Promise<void>;
+  exportComparisonToExcel: () => Promise<void>;
+  exportAllSelectedTablesToExcel: () => Promise<void>;
+  exportMatchResultsToExcel: (resultId: number, includeMatched?: boolean, includeUnmatched?: boolean) => Promise<void>;
+  isExporting: boolean;
+
+  // Relationship State
+  relationships: TableRelationship[];
+  setRelationships: React.Dispatch<React.SetStateAction<TableRelationship[]>>;
+  valueMappings: ValueMapping[];
+  setValueMappings: React.Dispatch<React.SetStateAction<ValueMapping[]>>;
+  isRelationshipsLoading: boolean;
+  showRelationshipModal: boolean;
+  setShowRelationshipModal: React.Dispatch<React.SetStateAction<boolean>>;
+  showValueMappingModal: boolean;
+  setShowValueMappingModal: React.Dispatch<React.SetStateAction<boolean>>;
+  editingRelationship: TableRelationship | null;
+  setEditingRelationship: React.Dispatch<React.SetStateAction<TableRelationship | null>>;
+  editingValueMapping: ValueMapping | null;
+  setEditingValueMapping: React.Dispatch<React.SetStateAction<ValueMapping | null>>;
+  addRelationship: (relationship: Omit<TableRelationship, 'id'>) => Promise<TableRelationship>;
+  updateRelationship: (id: string, updates: Partial<TableRelationship>) => Promise<void>;
+  deleteRelationship: (id: string) => Promise<void>;
+  getRelationshipsForTable: (tableKey: string) => TableRelationship[];
+  addValueMapping: (mapping: Omit<ValueMapping, 'id'>) => Promise<ValueMapping>;
+  updateValueMapping: (id: string, updates: Partial<ValueMapping>) => Promise<void>;
+  deleteValueMapping: (id: string) => Promise<void>;
+  applyValueMapping: (mappingId: string, value: string) => string;
+  reverseValueMapping: (mappingId: string, transformedValue: string) => string;
+  openEditRelationship: (relationship: TableRelationship) => void;
+  openNewRelationship: () => void;
+  openEditValueMapping: (mapping: ValueMapping) => void;
+  openNewValueMapping: () => void;
+  loadRelationships: () => Promise<void>;
+  loadValueMappings: () => Promise<void>;
+
+  // Match Engine State
+  matchConfigs: MatchConfig[];
+  setMatchConfigs: React.Dispatch<React.SetStateAction<MatchConfig[]>>;
+  matchResults: MatchSummary[];
+  setMatchResults: React.Dispatch<React.SetStateAction<MatchSummary[]>>;
+  isMatching: boolean;
+  isMatchingLoading: boolean;
+  activeMatchResult: MatchSummary | null;
+  setActiveMatchResult: React.Dispatch<React.SetStateAction<MatchSummary | null>>;
+  showMatchConfigModal: boolean;
+  setShowMatchConfigModal: React.Dispatch<React.SetStateAction<boolean>>;
+  editingMatchConfig: MatchConfig | null;
+  setEditingMatchConfig: React.Dispatch<React.SetStateAction<MatchConfig | null>>;
+  runMatch: (config: MatchConfig) => Promise<void>;
+  addMatchConfig: (config: Omit<MatchConfig, 'id' | 'createdAt'>) => Promise<MatchConfig>;
+  updateMatchConfig: (id: string, updates: Partial<MatchConfig>) => Promise<void>;
+  deleteMatchConfig: (id: string) => Promise<void>;
+  openNewMatchConfig: () => void;
+  openEditMatchConfig: (config: MatchConfig) => void;
+  getTableData: (tableKey: string) => { columns: string[]; data: string[][] } | null;
+  loadMatchConfigs: () => Promise<void>;
+  loadMatchResults: () => Promise<void>;
 }
 
 const BackofficeContext = createContext<BackofficeContextValue | null>(null);
@@ -199,16 +280,26 @@ export function BackofficeProvider({ children }: { children: React.ReactNode }) 
     tableState.selectedTables,
     tableState.setSelectedTables,
     tableState.setExpandedTable,
-    sqlPythonState.setPythonError
+    sqlPythonState.setPythonError,
+    tableState.refreshTables
   );
 
   const exportState = useExportState(
+    tableState.masterTables,
     tableState.tableDataOverrides,
     filterState.getFilteredData,
     sqlPythonState.sqlOutput,
     sqlPythonState.sqlColumns,
     cellState.compareRows,
     tableState.selectedTables
+  );
+
+  const relationshipState = useRelationships();
+
+  const matchEngineState = useMatchEngine(
+    tableState.tableDataOverrides,
+    relationshipState.valueMappings,
+    relationshipState.applyValueMapping
   );
 
   const value = useMemo<BackofficeContextValue>(() => ({
@@ -222,9 +313,15 @@ export function BackofficeProvider({ children }: { children: React.ReactNode }) 
     ...sqlPythonState,
     ...importState,
     ...exportState,
+    ...relationshipState,
+    ...matchEngineState,
+    isRelationshipsLoading: relationshipState.isLoading,
+    isMatchingLoading: matchEngineState.isLoading,
+    isProcessesLoading: processState.isLoading,
   }), [
     tableState, cellState, filterState, formulaState, processState,
     modalState, chartState, sqlPythonState, importState, exportState,
+    relationshipState, matchEngineState,
   ]);
 
   return (

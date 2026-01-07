@@ -8,3 +8,5 @@ export { useSqlPythonState } from './useSqlPythonState';
 export { useModalState } from './useModalState';
 export { useChartState } from './useChartState';
 export { useExportState } from './useExportState';
+export { useRelationships } from './useRelationships';
+export { useMatchEngine } from './useMatchEngine';

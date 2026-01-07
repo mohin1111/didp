@@ -5,7 +5,7 @@ export function useChartState() {
   const [chartXAxis, setChartXAxis] = useState(0);
   const [chartYAxis, setChartYAxis] = useState(1);
   const [outputView, setOutputView] = useState<'table' | 'chart'>('table');
-  const [processingMode, setProcessingMode] = useState<'operations' | 'excel' | 'python' | 'sql'>('operations');
+  const [processingMode, setProcessingMode] = useState<'operations' | 'matching' | 'excel' | 'python' | 'sql'>('operations');
   const [outputTab, setOutputTab] = useState('results');
 
   return {

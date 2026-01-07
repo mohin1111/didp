@@ -4,7 +4,7 @@ import type { MasterTablesMap, TableDataOverrides } from '../types';
  * Generate SQL DDL schema from master tables
  */
 export const generateSqlSchema = (masterTables: MasterTablesMap): string => {
-  let schema = '-- CNSDB Database Schema\n-- Generated: ' + new Date().toISOString() + '\n\n';
+  let schema = '-- Database Schema\n-- Generated: ' + new Date().toISOString() + '\n\n';
 
   // Group tables by category
   const categories = [...new Set(Object.values(masterTables).map(t => t.category || 'Other'))];
@@ -45,30 +45,6 @@ export const generateSqlSchema = (masterTables: MasterTablesMap): string => {
       }
     });
   });
-
-  // Add CNS-specific sample queries
-  schema += '-- ============================================\n';
-  schema += '-- SAMPLE QUERIES\n';
-  schema += '-- ============================================\n\n';
-  schema += "-- Get today's day trades\n";
-  schema += "SELECT * FROM tbl_DayTrade WHERE d_trade_date >= '2026-01-07';\n\n";
-  schema += '-- Get open positions with MTM\n';
-  schema += 'SELECT op.*, cp.n_close_price \n';
-  schema += 'FROM tbl_OpenPosition op \n';
-  schema += 'JOIN tbl_ClosingPrice cp ON op.n_contract_id = cp.n_contract_id;\n\n';
-  schema += '-- Get client-wise P/L summary\n';
-  schema += 'SELECT n_client_id, SUM(n_amount) as total_pl \n';
-  schema += 'FROM tbl_ProfitLoss \n';
-  schema += 'GROUP BY n_client_id;\n\n';
-  schema += '-- Get margin requirements by broker\n';
-  schema += 'SELECT n_broker_id, SUM(n_margin_amount) as total_margin \n';
-  schema += 'FROM tbl_DailyMargin \n';
-  schema += "WHERE d_margin_date = '2026-01-07' \n";
-  schema += 'GROUP BY n_broker_id;\n\n';
-  schema += '-- Get brokerage summary\n';
-  schema += 'SELECT n_broker_id, n_exchange_id, SUM(n_brokerage_amt) as total_brokerage \n';
-  schema += 'FROM tbl_DailyBrokerage \n';
-  schema += 'GROUP BY n_broker_id, n_exchange_id;\n';
 
   return schema;
 };

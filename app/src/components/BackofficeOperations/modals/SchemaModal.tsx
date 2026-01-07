@@ -1,12 +1,12 @@
 import { X, Copy, TableProperties } from 'lucide-react';
 import { useBackoffice } from '../context/BackofficeContext';
-import { masterTables } from '../data';
 import { generateSqlSchema } from '../utils';
 
 export default function SchemaModal() {
   const {
     showSchemaModal,
     setShowSchemaModal,
+    masterTables,
   } = useBackoffice();
 
   if (!showSchemaModal) return null;

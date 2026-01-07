@@ -24,55 +24,20 @@ export const colorClasses = {
 export type ColorKey = keyof typeof colorClasses;
 
 // Default Python script template
-export const DEFAULT_PYTHON_SCRIPT = `# CNSDB Custom Processing Script
+export const DEFAULT_PYTHON_SCRIPT = `# Data Processing Script
 import pandas as pd
-from datetime import datetime
 
-def calculate_mtm(positions_df, closing_prices_df):
-    """
-    Calculate Mark-to-Market for open positions
-    """
-    # Merge positions with closing prices
-    merged = positions_df.merge(
-        closing_prices_df,
-        on='contract_id',
-        how='left'
-    )
-
-    # Calculate MTM
-    merged['mtm'] = (merged['close_price'] - merged['avg_price']) * merged['quantity']
-    merged['mtm'] = merged.apply(
-        lambda x: -x['mtm'] if x['buy_sell'] == 'SELL' else x['mtm'],
-        axis=1
-    )
-
-    # Group by client
-    client_mtm = merged.groupby('client_id').agg({
-        'mtm': 'sum',
-        'quantity': 'sum'
-    }).reset_index()
-
-    # Flag significant MTM
-    client_mtm['alert'] = client_mtm['mtm'].apply(
-        lambda x: 'HIGH' if abs(x) > 100000 else 'NORMAL'
-    )
-
-    return client_mtm
-
-# Execute
-result = calculate_mtm(master_data['openPosition'], master_data['closingPrice'])
-output.write(result)`;
+# Access imported tables via: tables['table_name']
+# Example:
+# df = tables['my_imported_table']
+# result = df.groupby('column').sum()
+# output.write(result)
+`;
 
 // Default SQL query
-export const DEFAULT_SQL_QUERY = `-- Query CNS Database
-SELECT * FROM dayTrade
-WHERE status = 'MATCHED'
-ORDER BY value DESC
+export const DEFAULT_SQL_QUERY = `-- Query imported tables
+SELECT * FROM imported_table
 LIMIT 10;`;
 
-// Initial saved processes
-export const INITIAL_SAVED_PROCESSES = [
-  { id: 1, name: 'Daily Trade Recon', description: 'Standard daily trade reconciliation', processId: 'reconciliation', config: { tolerance: 'exact', counterparty: 'all' }, createdAt: '2026-01-05' },
-  { id: 2, name: 'EOD Settlement', description: 'End of day settlement processing', processId: 'settlement', config: { tolerance: '0.01', counterparty: 'DTCC' }, createdAt: '2026-01-04' },
-  { id: 3, name: 'Weekly Risk Report', description: 'Weekly VaR calculation', processId: 'risk', config: { tolerance: '0.1', counterparty: 'all' }, createdAt: '2026-01-01' },
-];
+// No initial saved processes - start fresh
+export const INITIAL_SAVED_PROCESSES: never[] = [];

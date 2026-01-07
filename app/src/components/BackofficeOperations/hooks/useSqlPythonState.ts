@@ -1,10 +1,10 @@
 import { useState, useCallback } from 'react';
-import { masterTables, DEFAULT_SQL_QUERY, DEFAULT_PYTHON_SCRIPT } from '../data';
-import { executeSqlQuery as executeSql } from '../utils';
+import { DEFAULT_SQL_QUERY, DEFAULT_PYTHON_SCRIPT } from '../data';
+import { sqlApi, pythonApi } from '../api';
 import type { TableDataOverrides } from '../types';
 
 export function useSqlPythonState(
-  tableDataOverrides: TableDataOverrides,
+  _tableDataOverrides: TableDataOverrides,
   setChartYAxis: React.Dispatch<React.SetStateAction<number>>
 ) {
   const [sqlQuery, setSqlQuery] = useState(DEFAULT_SQL_QUERY);
@@ -13,50 +13,77 @@ export function useSqlPythonState(
   const [customScript, setCustomScript] = useState(DEFAULT_PYTHON_SCRIPT);
   const [pythonOutput, setPythonOutput] = useState('');
   const [pythonError, setPythonError] = useState('');
+  const [pythonResultColumns, setPythonResultColumns] = useState<string[]>([]);
+  const [pythonResultData, setPythonResultData] = useState<string[][]>([]);
+  const [isExecuting, setIsExecuting] = useState(false);
 
-  const executeSqlQuery = useCallback(() => {
+  const executeSqlQuery = useCallback(async () => {
     setPythonError('');
-    const result = executeSql(sqlQuery, masterTables, tableDataOverrides);
-    if (result.error) {
-      setPythonError(result.error);
-    } else {
-      setSqlColumns(result.columns);
-      setSqlOutput(result.data);
-      const numericIdx = result.columns.findIndex(c =>
-        c.includes('Value') || c.includes('Price') || c.includes('Qty') || c.includes('Amount')
-      );
-      if (numericIdx >= 0) setChartYAxis(numericIdx);
-    }
-  }, [sqlQuery, tableDataOverrides, setChartYAxis]);
+    setIsExecuting(true);
 
-  const executePythonScript = useCallback(() => {
+    try {
+      const result = await sqlApi.execute(sqlQuery);
+      if (result.error) {
+        setPythonError(result.error);
+        setSqlColumns([]);
+        setSqlOutput([]);
+      } else {
+        setSqlColumns(result.columns);
+        setSqlOutput(result.data);
+        const numericIdx = result.columns.findIndex(c =>
+          c.includes('Value') || c.includes('Price') || c.includes('Qty') || c.includes('Amount')
+        );
+        if (numericIdx >= 0) setChartYAxis(numericIdx);
+      }
+    } catch (error) {
+      setPythonError(error instanceof Error ? error.message : 'SQL execution failed');
+      setSqlColumns([]);
+      setSqlOutput([]);
+    } finally {
+      setIsExecuting(false);
+    }
+  }, [sqlQuery, setChartYAxis]);
+
+  const executePythonScript = useCallback(async () => {
     setPythonOutput('');
     setPythonError('');
-    setTimeout(() => {
-      setPythonOutput(`[Execution Output - ${new Date().toLocaleTimeString()}]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Loading data from selected tables...
-✓ Loaded trades: 1,247 rows
-✓ Loaded settlements: 892 rows
+    setPythonResultColumns([]);
+    setPythonResultData([]);
+    setIsExecuting(true);
 
-Processing trades...
-✓ Filtered settled trades: 847 rows
-✓ Calculated net positions for 156 clients
+    try {
+      const result = await pythonApi.execute(customScript);
 
-Results Summary:
-┌─────────────────────┬──────────┬────────────┐
-│ Metric              │ Value    │ Change     │
-├─────────────────────┼──────────┼────────────┤
-│ Total Trades        │ 1,247    │ +12.3%     │
-│ Settled Value       │ $45.2M   │ +8.7%      │
-│ Avg Trade Size      │ $36,247  │ -2.1%      │
-│ Flagged for Review  │ 23       │ -15.0%     │
-└─────────────────────┴──────────┴────────────┘
+      // Set output
+      if (result.output) {
+        setPythonOutput(result.output);
+      }
 
-✓ Script completed successfully in 2.34s
-✓ Results exported to: output/positions_${new Date().toISOString().split('T')[0]}.csv`);
-    }, 1500);
-  }, []);
+      // Set error if any
+      if (result.error) {
+        setPythonError(result.error);
+      }
+
+      // Set result data if returned
+      if (result.result_columns && result.result_data) {
+        setPythonResultColumns(result.result_columns);
+        setPythonResultData(result.result_data);
+
+        // Also set to SQL output for display in results tab
+        setSqlColumns(result.result_columns);
+        setSqlOutput(result.result_data);
+      }
+
+      // Add execution info to output
+      const execInfo = `\n[Executed in ${result.execution_time_ms}ms]`;
+      setPythonOutput(prev => prev + execInfo);
+
+    } catch (error) {
+      setPythonError(error instanceof Error ? error.message : 'Python execution failed');
+    } finally {
+      setIsExecuting(false);
+    }
+  }, [customScript]);
 
   return {
     sqlQuery, setSqlQuery,
@@ -65,6 +92,9 @@ Results Summary:
     customScript, setCustomScript,
     pythonOutput, setPythonOutput,
     pythonError, setPythonError,
+    pythonResultColumns, setPythonResultColumns,
+    pythonResultData, setPythonResultData,
+    isExecuting,
     executeSqlQuery, executePythonScript,
   };
 }

@@ -1,22 +1,34 @@
 import { useBackoffice } from '../context/BackofficeContext';
-import { masterTables } from '../data';
 import { TableRenderer } from '../shared';
 import {
   Database, Calendar, Filter, ArrowRight, ChevronDown, ChevronRight,
-  Upload, Maximize2, FileSpreadsheet
+  Upload, Maximize2, FileSpreadsheet, Loader2
 } from 'lucide-react';
 
 export default function MasterDataSection() {
   const {
     selectedDate, setSelectedDate,
     selectedTables, toggleTable, expandedTable, setExpandedTable,
-    tableDataOverrides, tablesByCategory,
+    tableDataOverrides, tablesByCategory, masterTables, fetchTableData, isLoading,
     showFilters, columnFilters, getActiveFilterCount,
     selectedCells, compareRows,
     toggleFilters, clearAllFilters, updateColumnFilter,
     handleCellClick, toggleRowForCompare,
     setFullViewTable, exportTableToExcel, fileInputRef,
   } = useBackoffice();
+
+  const handleExpandTable = async (key: string, isExpanded: boolean) => {
+    if (isExpanded) {
+      setExpandedTable(null);
+    } else {
+      setExpandedTable(key);
+      // Fetch table data if not already loaded
+      const override = tableDataOverrides[key];
+      if (!override || !override.data.length) {
+        await fetchTableData(key);
+      }
+    }
+  };
 
   return (
     <div className="w-[34%] min-w-[280px] border-r border-slate-700 flex flex-col bg-slate-900/50">
@@ -35,6 +47,7 @@ export default function MasterDataSection() {
               <Upload size={12} />
               <span className="hidden lg:inline">Import</span>
             </button>
+            {isLoading && <Loader2 size={12} className="text-blue-400 animate-spin" />}
             <span className="text-[10px] text-slate-500">{selectedTables.length} selected</span>
           </div>
         </div>
@@ -77,6 +90,24 @@ export default function MasterDataSection() {
 
       {/* Table List */}
       <div className="flex-1 overflow-y-auto p-2 space-y-2">
+        {Object.keys(tablesByCategory).length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full text-center p-4">
+            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-4">
+              <Upload size={24} className="text-slate-500" />
+            </div>
+            <h3 className="text-sm font-medium text-slate-300 mb-2">No Data Sources</h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Import Excel or CSV files to get started
+            </p>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-sm text-white transition-colors"
+            >
+              <Upload size={14} />
+              Import File
+            </button>
+          </div>
+        )}
         {Object.entries(tablesByCategory).map(([category, tables]) => (
           <div key={category}>
             <div className="text-[10px] font-medium text-slate-500 uppercase tracking-wide px-1 py-1">{category}</div>
@@ -85,7 +116,7 @@ export default function MasterDataSection() {
               const override = tableDataOverrides[key];
               const isSelected = selectedTables.includes(key);
               const isExpanded = expandedTable === key;
-              const Icon = table?.icon || Database;
+              const isLoadingData = isExpanded && !override?.data?.length;
               const label = table?.label || key.replace(/_/g, ' ');
               const count = override ? override.data.length : table?.count || 0;
               const columns = override ? override.columns : table?.columns || [];
@@ -101,15 +132,21 @@ export default function MasterDataSection() {
                     }`}
                   >
                     <button
-                      onClick={() => setExpandedTable(isExpanded ? null : key)}
+                      onClick={() => handleExpandTable(key, isExpanded)}
                       className="text-slate-400 hover:text-white"
                     >
-                      {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      {isLoadingData ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : isExpanded ? (
+                        <ChevronDown size={14} />
+                      ) : (
+                        <ChevronRight size={14} />
+                      )}
                     </button>
                     <div onClick={() => toggleTable(key)} className="flex-1 flex items-center gap-2">
-                      <Icon size={14} className={isSelected ? 'text-blue-400' : 'text-slate-500'} />
+                      <Database size={14} className={isSelected ? 'text-blue-400' : 'text-slate-500'} />
                       <span className={`text-xs ${isSelected ? 'text-white' : 'text-slate-300'}`}>{label}</span>
-                      {!table && <span className="text-[9px] bg-green-500/20 text-green-400 px-1 rounded">Imported</span>}
+                      {table?.category === 'Imported' && <span className="text-[9px] bg-green-500/20 text-green-400 px-1 rounded">Imported</span>}
                     </div>
                     <span className="text-[10px] text-slate-500">{count.toLocaleString()}</span>
                     {isSelected && (

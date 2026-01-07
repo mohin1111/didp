@@ -3,7 +3,8 @@ import { processes, excelFormulas, colorClasses } from '../data';
 import {
   Zap, Terminal, Code, Calculator, Play, Download, Link2, Unlink,
   Plus, Trash2, ArrowDown, GitBranch, Maximize2, Bookmark, FolderOpen,
-  TableProperties, BarChart3, PlayCircle
+  TableProperties, BarChart3, PlayCircle, Combine, ArrowRightLeft, Settings,
+  CheckCircle2, XCircle, AlertCircle
 } from 'lucide-react';
 
 export default function ProcessingSection() {
@@ -20,6 +21,18 @@ export default function ProcessingSection() {
     formulas, activeFormulaId, setActiveFormulaId, updateFormula, addFormula, removeFormula,
     selectedCells, insertCellReference,
     selectedTables, setShowChartModal,
+    // Relationship & Matching
+    valueMappings,
+    openNewValueMapping,
+    openEditValueMapping,
+    matchConfigs,
+    matchResults,
+    isMatching,
+    activeMatchResult,
+    openNewMatchConfig,
+    openEditMatchConfig,
+    runMatch,
+    deleteMatchConfig,
   } = useBackoffice();
 
   const currentProcess = processes.find(p => p.id === selectedProcess);
@@ -30,21 +43,22 @@ export default function ProcessingSection() {
       <div className="flex border-b border-slate-700 bg-slate-900">
         {[
           { id: 'operations', label: 'Operations', icon: Zap },
-          { id: 'sql', label: 'SQL Query', icon: Terminal },
+          { id: 'matching', label: 'Matching', icon: Combine },
+          { id: 'sql', label: 'SQL', icon: Terminal },
           { id: 'python', label: 'Python', icon: Code },
           { id: 'excel', label: 'Excel', icon: Calculator },
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setProcessingMode(tab.id as typeof processingMode)}
-            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 text-xs transition-colors ${
               processingMode === tab.id
                 ? 'bg-slate-800 text-white border-b-2 border-blue-500'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
             }`}
           >
             <tab.icon size={12} />
-            {tab.label}
+            <span className="hidden lg:inline">{tab.label}</span>
           </button>
         ))}
       </div>
@@ -163,6 +177,177 @@ export default function ProcessingSection() {
                 </>
               )}
             </button>
+          </div>
+        )}
+
+        {processingMode === 'matching' && (
+          <div className="space-y-3">
+            {/* Value Mappings */}
+            <div className="bg-slate-800/50 rounded-lg p-2 border border-slate-700">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <ArrowRightLeft size={12} className="text-amber-400" />
+                  <span className="text-xs font-medium text-slate-300">Value Mappings</span>
+                </div>
+                <button
+                  onClick={openNewValueMapping}
+                  className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
+                  title="Add Mapping"
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+              {valueMappings.length === 0 ? (
+                <p className="text-xs text-slate-500 text-center py-2">No value mappings defined</p>
+              ) : (
+                <div className="space-y-1">
+                  {valueMappings.map(vm => (
+                    <button
+                      key={vm.id}
+                      onClick={() => openEditValueMapping(vm)}
+                      className="w-full text-left p-2 bg-slate-800 hover:bg-slate-700 rounded text-xs flex items-center justify-between"
+                    >
+                      <span className="text-white">{vm.name}</span>
+                      <span className="text-slate-500">{Object.keys(vm.mappings).length} rules</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Match Configurations */}
+            <div className="bg-slate-800/50 rounded-lg p-2 border border-slate-700">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Combine size={12} className="text-cyan-400" />
+                  <span className="text-xs font-medium text-slate-300">Match Configurations</span>
+                </div>
+                <button
+                  onClick={openNewMatchConfig}
+                  className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
+                  title="New Match Config"
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+              {matchConfigs.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-xs text-slate-500 mb-2">No match configurations</p>
+                  <button
+                    onClick={openNewMatchConfig}
+                    className="px-3 py-1.5 bg-cyan-500/20 text-cyan-400 rounded text-xs hover:bg-cyan-500/30"
+                  >
+                    Create First Match
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {matchConfigs.map(config => (
+                    <div
+                      key={config.id}
+                      className="p-2 bg-slate-800 rounded border border-slate-700 hover:border-slate-600"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-white font-medium">{config.name}</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => openEditMatchConfig(config)}
+                            className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
+                          >
+                            <Settings size={12} />
+                          </button>
+                          <button
+                            onClick={() => runMatch(config)}
+                            disabled={isMatching}
+                            className="p-1 hover:bg-slate-700 rounded text-cyan-400 hover:text-cyan-300 disabled:opacity-50"
+                          >
+                            <Play size={12} />
+                          </button>
+                          <button
+                            onClick={() => deleteMatchConfig(config.id)}
+                            className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-red-400"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        {config.sourceTable} → {config.targetTable}
+                      </div>
+                      <div className="text-[10px] text-slate-600">
+                        {config.matchColumns.length} column(s)
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Active Match Result */}
+            {activeMatchResult && (
+              <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-slate-300">Match Results</span>
+                  <span className="text-[10px] text-slate-500">
+                    {new Date(activeMatchResult.runAt).toLocaleTimeString()}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                  <div className="text-center p-2 bg-green-500/10 rounded border border-green-500/30">
+                    <div className="flex items-center justify-center gap-1 text-green-400 mb-1">
+                      <CheckCircle2 size={12} />
+                    </div>
+                    <div className="text-lg font-bold text-green-400">
+                      {activeMatchResult.result.matchedCount}
+                    </div>
+                    <div className="text-[10px] text-slate-500">Matched</div>
+                  </div>
+                  <div className="text-center p-2 bg-amber-500/10 rounded border border-amber-500/30">
+                    <div className="flex items-center justify-center gap-1 text-amber-400 mb-1">
+                      <AlertCircle size={12} />
+                    </div>
+                    <div className="text-lg font-bold text-amber-400">
+                      {activeMatchResult.result.unmatchedSourceCount}
+                    </div>
+                    <div className="text-[10px] text-slate-500">Unmatched Src</div>
+                  </div>
+                  <div className="text-center p-2 bg-red-500/10 rounded border border-red-500/30">
+                    <div className="flex items-center justify-center gap-1 text-red-400 mb-1">
+                      <XCircle size={12} />
+                    </div>
+                    <div className="text-lg font-bold text-red-400">
+                      {activeMatchResult.result.unmatchedTargetCount}
+                    </div>
+                    <div className="text-[10px] text-slate-500">Unmatched Tgt</div>
+                  </div>
+                </div>
+                <div className="text-[10px] text-slate-500">
+                  {activeMatchResult.sourceTable} ↔ {activeMatchResult.targetTable}
+                </div>
+              </div>
+            )}
+
+            {/* Match History */}
+            {matchResults.length > 1 && (
+              <div className="bg-slate-800/50 rounded-lg p-2 border border-slate-700">
+                <span className="text-xs font-medium text-slate-400 mb-2 block">Recent Matches</span>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {matchResults.slice(1, 5).map((result, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-1.5 bg-slate-800 rounded text-xs"
+                    >
+                      <span className="text-slate-400">{result.configName}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-green-400">{result.result.matchedCount}</span>
+                        <span className="text-slate-500">/</span>
+                        <span className="text-amber-400">{result.result.unmatchedSourceCount}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

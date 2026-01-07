@@ -1,7 +1,6 @@
-import { X, GitCompare, MousePointer2, FileSpreadsheet } from 'lucide-react';
+import { X, GitCompare, MousePointer2, FileSpreadsheet, Database } from 'lucide-react';
 import { useBackoffice } from '../context/BackofficeContext';
 import { TableRenderer } from '../shared';
-import { masterTables } from '../data';
 
 export default function FullViewModal() {
   const {
@@ -19,16 +18,18 @@ export default function FullViewModal() {
     handleCellClick,
     toggleRowForCompare,
     tableDataOverrides,
+    masterTables,
     exportTableToExcel,
   } = useBackoffice();
 
-  if (!fullViewTable || !masterTables[fullViewTable]) return null;
+  if (!fullViewTable) return null;
 
   const table = masterTables[fullViewTable];
-  const Icon = table.icon;
   const override = tableDataOverrides[fullViewTable];
-  const columns = override ? override.columns : table.columns;
-  const data = override ? override.data : table.data;
+  const columns = override ? override.columns : table?.columns || [];
+  const data = override ? override.data : table?.data || [];
+  const label = table?.label || fullViewTable.replace(/_/g, ' ');
+  const count = override ? override.data.length : table?.count || 0;
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 lg:p-8">
@@ -37,11 +38,11 @@ export default function FullViewModal() {
         <div className="flex items-center justify-between p-3 border-b border-slate-700">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-500/20 rounded-lg">
-              <Icon size={20} className="text-blue-400" />
+              <Database size={20} className="text-blue-400" />
             </div>
             <div>
-              <h2 className="font-semibold text-white text-lg">{table.label}</h2>
-              <p className="text-xs text-slate-500">{table.count.toLocaleString()} rows</p>
+              <h2 className="font-semibold text-white text-lg">{label}</h2>
+              <p className="text-xs text-slate-500">{count.toLocaleString()} rows</p>
             </div>
           </div>
           <div className="flex items-center gap-2">

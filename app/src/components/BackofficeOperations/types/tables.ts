@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 
 export interface MasterTable {
-  icon: LucideIcon;
+  icon?: LucideIcon;
   label: string;
   count: number;
   columns: string[];

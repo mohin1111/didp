@@ -42,7 +42,7 @@ export const exportTableToExcel = (
   if (override) {
     const filteredData = getFilteredData(tableKey, override.data);
     const displayName = masterTables[tableKey]?.label || tableKey.replace(/_/g, ' ');
-    exportToExcel(filteredData, override.columns, `CNSDB_${displayName.replace(/\s+/g, '_')}`);
+    exportToExcel(filteredData, override.columns, `DIDP_${displayName.replace(/\s+/g, '_')}`);
     return;
   }
 
@@ -51,7 +51,7 @@ export const exportTableToExcel = (
   if (!table) return;
 
   const filteredData = getFilteredData(tableKey, table.data);
-  exportToExcel(filteredData, table.columns, `CNSDB_${table.label.replace(/\s+/g, '_')}`);
+  exportToExcel(filteredData, table.columns, `DIDP_${table.label.replace(/\s+/g, '_')}`);
 };
 
 /**
@@ -59,7 +59,7 @@ export const exportTableToExcel = (
  */
 export const exportSqlResultsToExcel = (sqlOutput: string[][], sqlColumns: string[]): void => {
   if (sqlOutput.length === 0 || sqlColumns.length === 0) return;
-  exportToExcel(sqlOutput, sqlColumns, 'CNSDB_SQL_Results');
+  exportToExcel(sqlOutput, sqlColumns, 'DIDP_SQL_Results');
 };
 
 /**
@@ -113,7 +113,7 @@ export const exportAllSelectedTablesToExcel = (
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
   });
 
-  XLSX.writeFile(wb, `CNSDB_Export_${timestamp}.xlsx`);
+  XLSX.writeFile(wb, `DIDP_Export_${timestamp}.xlsx`);
 };
 
 /**
@@ -134,7 +134,7 @@ export const exportComparisonToExcel = (
     ...row.data
   ]);
 
-  exportToExcel(data, headers, 'CNSDB_Comparison');
+  exportToExcel(data, headers, 'DIDP_Comparison');
 };
 
 /**

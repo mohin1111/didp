@@ -1,6 +1,6 @@
-import { X, Upload, Table, Plus, FileSpreadsheet, Download } from 'lucide-react';
+import { X, Upload, Table, Plus, FileSpreadsheet, Download, ToggleLeft, ToggleRight, Edit3 } from 'lucide-react';
 import { useBackoffice } from '../context/BackofficeContext';
-import { masterTables } from '../data';
+import { useState } from 'react';
 
 export default function ImportModal() {
   const {
@@ -12,11 +12,18 @@ export default function ImportModal() {
     importTargetTable,
     setImportTargetTable,
     tableDataOverrides,
+    masterTables,
     handleSheetChange,
     confirmImport,
     cancelImport,
     createNewTableFromImport,
+    hasHeaders,
+    toggleHasHeaders,
+    updateColumnName,
   } = useBackoffice();
+
+  const [editingColumnIndex, setEditingColumnIndex] = useState<number | null>(null);
+  const [editingColumnName, setEditingColumnName] = useState('');
 
   if (!showImportModal) return null;
 
@@ -88,6 +95,36 @@ export default function ImportModal() {
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Header Detection */}
+            {importedData && (
+              <div className="mb-4">
+                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">
+                  Header Row
+                </label>
+                <button
+                  onClick={toggleHasHeaders}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                    hasHeaders
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {hasHeaders ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                    <span>{hasHeaders ? 'First row is headers' : 'No header row'}</span>
+                  </div>
+                  <span className="text-xs opacity-70">
+                    {hasHeaders ? 'Auto-detected' : 'Click to toggle'}
+                  </span>
+                </button>
+                {!hasHeaders && (
+                  <p className="text-xs text-slate-500 mt-2">
+                    Click column headers below to rename them
+                  </p>
+                )}
               </div>
             )}
 
@@ -171,8 +208,48 @@ export default function ImportModal() {
                     <tr>
                       <th className="px-2 py-2 text-left text-slate-500 font-medium border-b border-slate-700">#</th>
                       {importedData.columns.map((col, i) => (
-                        <th key={i} className="px-2 py-2 text-left text-slate-400 font-medium border-b border-slate-700 whitespace-nowrap">
-                          {col || `Column ${i + 1}`}
+                        <th key={i} className="px-2 py-2 text-left border-b border-slate-700 whitespace-nowrap">
+                          {editingColumnIndex === i ? (
+                            <input
+                              type="text"
+                              value={editingColumnName}
+                              onChange={(e) => setEditingColumnName(e.target.value)}
+                              onBlur={() => {
+                                if (editingColumnName.trim()) {
+                                  updateColumnName(i, editingColumnName.trim());
+                                }
+                                setEditingColumnIndex(null);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  if (editingColumnName.trim()) {
+                                    updateColumnName(i, editingColumnName.trim());
+                                  }
+                                  setEditingColumnIndex(null);
+                                } else if (e.key === 'Escape') {
+                                  setEditingColumnIndex(null);
+                                }
+                              }}
+                              autoFocus
+                              className="w-full bg-slate-700 text-white px-1.5 py-0.5 rounded border border-blue-500 focus:outline-none text-xs"
+                            />
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setEditingColumnIndex(i);
+                                setEditingColumnName(col || `Column_${i + 1}`);
+                              }}
+                              className={`flex items-center gap-1 font-medium transition-colors ${
+                                !hasHeaders
+                                  ? 'text-amber-400 hover:text-amber-300 cursor-pointer'
+                                  : 'text-slate-400 cursor-default'
+                              }`}
+                              disabled={hasHeaders}
+                            >
+                              {col || `Column ${i + 1}`}
+                              {!hasHeaders && <Edit3 size={10} className="opacity-50" />}
+                            </button>
+                          )}
                         </th>
                       ))}
                     </tr>

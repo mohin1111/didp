@@ -1,6 +1,5 @@
 import { X, Columns, FileSpreadsheet } from 'lucide-react';
 import { useBackoffice } from '../context/BackofficeContext';
-import { masterTables } from '../data';
 
 export default function CompareModal() {
   const {
@@ -9,6 +8,7 @@ export default function CompareModal() {
     compareRows,
     setCompareRows,
     exportComparisonToExcel,
+    masterTables,
   } = useBackoffice();
 
   if (!showCompareModal || compareRows.length === 0) return null;
