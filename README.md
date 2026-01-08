@@ -1,5 +1,7 @@
 # DIDP - Data Integration & Processing
 
+[![DIDP Tests](https://github.com/mohin1111/didp/actions/workflows/test.yml/badge.svg)](https://github.com/mohin1111/didp/actions/workflows/test.yml)
+
 A comprehensive data integration and processing application with SQL/Python execution, Excel formula engine, value mappings, and table matching capabilities.
 
 ## Features
