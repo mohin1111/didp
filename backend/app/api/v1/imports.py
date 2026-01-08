@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, Body
 from sqlalchemy.orm import Session
 from typing import Optional, List
+from pydantic import BaseModel
 import uuid
 
 from ...database import get_db
@@ -9,6 +10,19 @@ from ...schemas import TableDetailResponse
 from ..v1.tables import table_to_detail_response
 
 router = APIRouter(prefix="/imports", tags=["File Import"])
+
+
+class BatchImportItem(BaseModel):
+    table_key: str
+    table_name: str
+    sheet_name: Optional[str] = None
+
+
+class BatchImportRequest(BaseModel):
+    file_id: str
+    imports: List[BatchImportItem]
+    has_headers: bool = True
+    category: Optional[str] = None
 
 
 @router.post("/upload")
@@ -81,6 +95,29 @@ async def confirm_import(
             category=category
         )
         return table_to_detail_response(table)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/batch", response_model=List[TableDetailResponse])
+async def batch_import(
+    request: BatchImportRequest,
+    db: Session = Depends(get_db)
+):
+    """Import multiple sheets from the same file in one request"""
+    service = ImportService(db)
+
+    try:
+        imports_list = [item.model_dump() for item in request.imports]
+        tables = service.batch_import(
+            file_id=request.file_id,
+            imports=imports_list,
+            has_headers=request.has_headers,
+            category=request.category
+        )
+        return [table_to_detail_response(t) for t in tables]
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

@@ -224,7 +224,7 @@ export function useImportState(
     }
   }, [uploadResponse, importFileName, selectedImportSheet, hasHeaders, tableDataOverrides, cancelImport, refreshTables, setSelectedTables, setExpandedTable, setPythonError]);
 
-  // Import selected sheets (or all if none selected)
+  // Import selected sheets (or all if none selected) using batch API
   const importSelectedSheets = useCallback(async () => {
     if (!uploadResponse) return;
 
@@ -236,28 +236,33 @@ export function useImportState(
     if (sheetsToImport.length === 0) return;
 
     const baseKey = importFileName.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-    const importedKeys: string[] = [];
+    const importSpecs: Array<{ tableKey: string; tableName: string; sheetName: string }> = [];
+
+    // Build import specs with unique keys
+    for (const sheetName of sheetsToImport) {
+      let tableKey = `imported_${baseKey}_${sheetName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}`;
+      let counter = 1;
+      while (tableDataOverrides[tableKey] || importSpecs.some(s => s.tableKey === tableKey)) {
+        tableKey = `imported_${baseKey}_${sheetName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_${counter}`;
+        counter++;
+      }
+      importSpecs.push({
+        tableKey,
+        tableName: `${baseKey} - ${sheetName}`.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        sheetName,
+      });
+    }
 
     try {
-      for (const sheetName of sheetsToImport) {
-        let tableKey = `imported_${baseKey}_${sheetName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}`;
-        let counter = 1;
-        while (tableDataOverrides[tableKey] || importedKeys.includes(tableKey)) {
-          tableKey = `imported_${baseKey}_${sheetName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_${counter}`;
-          counter++;
-        }
+      // Use batch API for multiple sheets
+      await importsApi.batch({
+        fileId: uploadResponse.file_id,
+        imports: importSpecs,
+        hasHeaders,
+        category: 'Imported',
+      });
 
-        await importsApi.confirm({
-          fileId: uploadResponse.file_id,
-          tableKey,
-          tableName: `${baseKey} - ${sheetName}`.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-          sheetName,
-          hasHeaders,
-          category: 'Imported',
-        });
-
-        importedKeys.push(tableKey);
-      }
+      const importedKeys = importSpecs.map(s => s.tableKey);
 
       // Refresh tables from backend
       refreshTables();
@@ -271,33 +276,38 @@ export function useImportState(
     }
   }, [uploadResponse, importFileName, importSheets, selectedSheetsForImport, hasHeaders, tableDataOverrides, cancelImport, refreshTables, setSelectedTables, setExpandedTable, setPythonError]);
 
-  // Import all sheets at once (legacy, now uses importSelectedSheets internally)
+  // Import all sheets at once using batch API
   const importAllSheets = useCallback(async () => {
     if (!uploadResponse || importSheets.length === 0) return;
 
     const baseKey = importFileName.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-    const importedKeys: string[] = [];
+    const importSpecs: Array<{ tableKey: string; tableName: string; sheetName: string }> = [];
+
+    // Build import specs with unique keys
+    for (const sheetName of importSheets) {
+      let tableKey = `imported_${baseKey}_${sheetName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}`;
+      let counter = 1;
+      while (tableDataOverrides[tableKey] || importSpecs.some(s => s.tableKey === tableKey)) {
+        tableKey = `imported_${baseKey}_${sheetName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_${counter}`;
+        counter++;
+      }
+      importSpecs.push({
+        tableKey,
+        tableName: `${baseKey} - ${sheetName}`.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        sheetName,
+      });
+    }
 
     try {
-      for (const sheetName of importSheets) {
-        let tableKey = `imported_${baseKey}_${sheetName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}`;
-        let counter = 1;
-        while (tableDataOverrides[tableKey] || importedKeys.includes(tableKey)) {
-          tableKey = `imported_${baseKey}_${sheetName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_${counter}`;
-          counter++;
-        }
+      // Use batch API
+      await importsApi.batch({
+        fileId: uploadResponse.file_id,
+        imports: importSpecs,
+        hasHeaders,
+        category: 'Imported',
+      });
 
-        await importsApi.confirm({
-          fileId: uploadResponse.file_id,
-          tableKey,
-          tableName: `${baseKey} - ${sheetName}`.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-          sheetName,
-          hasHeaders,
-          category: 'Imported',
-        });
-
-        importedKeys.push(tableKey);
-      }
+      const importedKeys = importSpecs.map(s => s.tableKey);
 
       // Refresh tables from backend
       refreshTables();

@@ -1,6 +1,7 @@
-import { X, GitCompare, MousePointer2, FileSpreadsheet, Database } from 'lucide-react';
+import { X, GitCompare, MousePointer2, FileSpreadsheet, Database, Loader2 } from 'lucide-react';
 import { useBackoffice } from '../context/BackofficeContext';
 import { TableRenderer } from '../shared';
+import { useEffect, useState } from 'react';
 
 export default function FullViewModal() {
   const {
@@ -20,7 +21,18 @@ export default function FullViewModal() {
     tableDataOverrides,
     masterTables,
     exportTableToExcel,
+    fetchTableData,
   } = useBackoffice();
+
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
+  // Fetch table data when modal opens
+  useEffect(() => {
+    if (fullViewTable && !tableDataOverrides[fullViewTable]) {
+      setIsLoadingData(true);
+      fetchTableData(fullViewTable).finally(() => setIsLoadingData(false));
+    }
+  }, [fullViewTable, tableDataOverrides, fetchTableData]);
 
   if (!fullViewTable) return null;
 
@@ -71,22 +83,31 @@ export default function FullViewModal() {
 
         {/* Modal Content */}
         <div className="flex-1 p-4 overflow-hidden">
-          <TableRenderer
-            tableKey={fullViewTable}
-            columns={columns}
-            data={data}
-            isFullView={true}
-            filtersVisible={showFilters[fullViewTable] || false}
-            filters={columnFilters[fullViewTable] || {}}
-            activeFilterCount={getActiveFilterCount(fullViewTable)}
-            selectedCells={selectedCells}
-            compareRows={compareRows}
-            onToggleFilters={() => toggleFilters(fullViewTable)}
-            onClearAllFilters={() => clearAllFilters(fullViewTable)}
-            onUpdateFilter={(colIdx, value) => updateColumnFilter(fullViewTable, colIdx, value)}
-            onCellClick={(rowIdx, colIdx, value, column, e) => handleCellClick(fullViewTable, rowIdx, colIdx, value, column, e)}
-            onToggleRowCompare={(rowIdx, rowData) => toggleRowForCompare(fullViewTable, rowIdx, rowData)}
-          />
+          {isLoadingData || (columns.length === 0 && data.length === 0) ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <Loader2 size={48} className="animate-spin text-blue-400 mx-auto mb-4" />
+                <p className="text-slate-400">Loading table data...</p>
+              </div>
+            </div>
+          ) : (
+            <TableRenderer
+              tableKey={fullViewTable}
+              columns={columns}
+              data={data}
+              isFullView={true}
+              filtersVisible={showFilters[fullViewTable] || false}
+              filters={columnFilters[fullViewTable] || {}}
+              activeFilterCount={getActiveFilterCount(fullViewTable)}
+              selectedCells={selectedCells}
+              compareRows={compareRows}
+              onToggleFilters={() => toggleFilters(fullViewTable)}
+              onClearAllFilters={() => clearAllFilters(fullViewTable)}
+              onUpdateFilter={(colIdx, value) => updateColumnFilter(fullViewTable, colIdx, value)}
+              onCellClick={(rowIdx, colIdx, value, column, e) => handleCellClick(fullViewTable, rowIdx, colIdx, value, column, e)}
+              onToggleRowCompare={(rowIdx, rowData) => toggleRowForCompare(fullViewTable, rowIdx, rowData)}
+            />
+          )}
         </div>
 
         {/* Modal Footer */}

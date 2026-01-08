@@ -173,6 +173,39 @@ export const importsApi = {
 
     return response.json();
   },
+
+  batch: async (params: {
+    fileId: string;
+    imports: Array<{
+      tableKey: string;
+      tableName: string;
+      sheetName?: string;
+    }>;
+    hasHeaders: boolean;
+    category?: string;
+  }): Promise<TableDetail[]> => {
+    const response = await fetch(`${API_BASE}/imports/batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file_id: params.fileId,
+        imports: params.imports.map(i => ({
+          table_key: i.tableKey,
+          table_name: i.tableName,
+          sheet_name: i.sheetName,
+        })),
+        has_headers: params.hasHeaders,
+        category: params.category,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Batch import failed' }));
+      throw new Error(error.detail || 'Batch import failed');
+    }
+
+    return response.json();
+  },
 };
 
 // ============ Relationships API ============

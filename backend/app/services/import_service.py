@@ -122,7 +122,8 @@ class ImportService:
         table_name: str,
         sheet_name: Optional[str],
         has_headers: bool,
-        category: Optional[str]
+        category: Optional[str],
+        keep_file: bool = False
     ) -> Table:
         """Confirm import and create table in database"""
         if file_id not in ImportService._temp_storage:
@@ -181,12 +182,47 @@ class ImportService:
         self.db.commit()
         self.db.refresh(table)
 
-        # Cleanup temp storage
-        del ImportService._temp_storage[file_id]
+        # Cleanup temp storage only if not keeping file for batch import
+        if not keep_file:
+            del ImportService._temp_storage[file_id]
+            if file_id in ImportService._temp_metadata:
+                del ImportService._temp_metadata[file_id]
+
+        return table
+
+    def cleanup_temp_file(self, file_id: str) -> None:
+        """Cleanup temporary file storage"""
+        if file_id in ImportService._temp_storage:
+            del ImportService._temp_storage[file_id]
         if file_id in ImportService._temp_metadata:
             del ImportService._temp_metadata[file_id]
 
-        return table
+    def batch_import(
+        self,
+        file_id: str,
+        imports: List[Dict[str, Any]],
+        has_headers: bool,
+        category: Optional[str]
+    ) -> List[Table]:
+        """Import multiple sheets from the same file"""
+        if file_id not in ImportService._temp_storage:
+            raise ValueError("File not found. Please upload again.")
+
+        tables = []
+        for i, import_spec in enumerate(imports):
+            is_last = (i == len(imports) - 1)
+            table = self.confirm_import(
+                file_id=file_id,
+                table_key=import_spec["table_key"],
+                table_name=import_spec["table_name"],
+                sheet_name=import_spec.get("sheet_name"),
+                has_headers=has_headers,
+                category=category,
+                keep_file=not is_last  # Only cleanup on last import
+            )
+            tables.append(table)
+
+        return tables
 
     def _detect_headers(self, df: pd.DataFrame) -> bool:
         """

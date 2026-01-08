@@ -2,8 +2,9 @@ import { useBackoffice } from '../context/BackofficeContext';
 import { TableRenderer } from '../shared';
 import {
   Database, Calendar, Filter, ArrowRight, ChevronDown, ChevronRight,
-  Upload, Maximize2, FileSpreadsheet, Loader2
+  Upload, Maximize2, FileSpreadsheet, Loader2, Trash2
 } from 'lucide-react';
+import { useState } from 'react';
 
 export default function MasterDataSection() {
   const {
@@ -15,7 +16,22 @@ export default function MasterDataSection() {
     toggleFilters, clearAllFilters, updateColumnFilter,
     handleCellClick, toggleRowForCompare,
     setFullViewTable, exportTableToExcel, fileInputRef,
+    deleteTable,
   } = useBackoffice();
+
+  const [deletingTable, setDeletingTable] = useState<string | null>(null);
+
+  const handleDeleteTable = async (key: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm(`Are you sure you want to delete "${masterTables[key]?.label || key}"? This cannot be undone.`)) {
+      setDeletingTable(key);
+      try {
+        await deleteTable(key);
+      } finally {
+        setDeletingTable(null);
+      }
+    }
+  };
 
   const handleExpandTable = async (key: string, isExpanded: boolean) => {
     if (isExpanded) {
@@ -164,6 +180,18 @@ export default function MasterDataSection() {
                           title="Export to Excel"
                         >
                           <FileSpreadsheet size={12} className="text-slate-400" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteTable(key, e)}
+                          className="p-1 hover:bg-red-500/20 rounded"
+                          title="Delete table"
+                          disabled={deletingTable === key}
+                        >
+                          {deletingTable === key ? (
+                            <Loader2 size={12} className="text-red-400 animate-spin" />
+                          ) : (
+                            <Trash2 size={12} className="text-red-400" />
+                          )}
                         </button>
                       </div>
                     )}
