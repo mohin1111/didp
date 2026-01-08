@@ -23,6 +23,7 @@ export function useImportState(
   const [importTargetTable, setImportTargetTable] = useState('');
   const [importSheets, setImportSheets] = useState<string[]>([]);
   const [selectedImportSheet, setSelectedImportSheet] = useState('');
+  const [selectedSheetsForImport, setSelectedSheetsForImport] = useState<Set<string>>(new Set());
   const [importFileName, setImportFileName] = useState('');
   const [hasHeaders, setHasHeaders] = useState(true);
   const [customColumnNames, setCustomColumnNames] = useState<string[]>([]);
@@ -133,10 +134,34 @@ export function useImportState(
     setUploadResponse(null);
     setImportSheets([]);
     setSelectedImportSheet('');
+    setSelectedSheetsForImport(new Set());
     setImportFileName('');
     setImportTargetTable('');
     setHasHeaders(true);
     setCustomColumnNames([]);
+  }, []);
+
+  // Toggle a sheet for import selection
+  const toggleSheetForImport = useCallback((sheetName: string) => {
+    setSelectedSheetsForImport(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sheetName)) {
+        newSet.delete(sheetName);
+      } else {
+        newSet.add(sheetName);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // Select all sheets
+  const selectAllSheets = useCallback(() => {
+    setSelectedSheetsForImport(new Set(importSheets));
+  }, [importSheets]);
+
+  // Deselect all sheets
+  const deselectAllSheets = useCallback(() => {
+    setSelectedSheetsForImport(new Set());
   }, []);
 
   const confirmImport = useCallback(async () => {
@@ -199,7 +224,54 @@ export function useImportState(
     }
   }, [uploadResponse, importFileName, selectedImportSheet, hasHeaders, tableDataOverrides, cancelImport, refreshTables, setSelectedTables, setExpandedTable, setPythonError]);
 
-  // Import all sheets at once
+  // Import selected sheets (or all if none selected)
+  const importSelectedSheets = useCallback(async () => {
+    if (!uploadResponse) return;
+
+    // Determine which sheets to import
+    const sheetsToImport = selectedSheetsForImport.size > 0
+      ? Array.from(selectedSheetsForImport)
+      : importSheets;
+
+    if (sheetsToImport.length === 0) return;
+
+    const baseKey = importFileName.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+    const importedKeys: string[] = [];
+
+    try {
+      for (const sheetName of sheetsToImport) {
+        let tableKey = `imported_${baseKey}_${sheetName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}`;
+        let counter = 1;
+        while (tableDataOverrides[tableKey] || importedKeys.includes(tableKey)) {
+          tableKey = `imported_${baseKey}_${sheetName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_${counter}`;
+          counter++;
+        }
+
+        await importsApi.confirm({
+          fileId: uploadResponse.file_id,
+          tableKey,
+          tableName: `${baseKey} - ${sheetName}`.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+          sheetName,
+          hasHeaders,
+          category: 'Imported',
+        });
+
+        importedKeys.push(tableKey);
+      }
+
+      // Refresh tables from backend
+      refreshTables();
+
+      cancelImport();
+      setSelectedTables(prev => [...prev, ...importedKeys]);
+      setExpandedTable(importedKeys[0]);
+    } catch (error) {
+      console.error('Error importing sheets:', error);
+      setPythonError(error instanceof Error ? error.message : 'Error importing sheets');
+    }
+  }, [uploadResponse, importFileName, importSheets, selectedSheetsForImport, hasHeaders, tableDataOverrides, cancelImport, refreshTables, setSelectedTables, setExpandedTable, setPythonError]);
+
+  // Import all sheets at once (legacy, now uses importSelectedSheets internally)
   const importAllSheets = useCallback(async () => {
     if (!uploadResponse || importSheets.length === 0) return;
 
@@ -245,6 +317,7 @@ export function useImportState(
     importTargetTable, setImportTargetTable,
     importSheets, setImportSheets,
     selectedImportSheet, setSelectedImportSheet,
+    selectedSheetsForImport, setSelectedSheetsForImport,
     importFileName, setImportFileName,
     hasHeaders, setHasHeaders,
     customColumnNames, setCustomColumnNames,
@@ -252,5 +325,6 @@ export function useImportState(
     fileInputRef,
     handleFileSelect, handleSheetChange, confirmImport, cancelImport, createNewTableFromImport,
     toggleHasHeaders, updateColumnName, importAllSheets,
+    toggleSheetForImport, selectAllSheets, deselectAllSheets, importSelectedSheets,
   };
 }

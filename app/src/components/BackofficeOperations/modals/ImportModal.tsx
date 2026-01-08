@@ -1,4 +1,4 @@
-import { X, Upload, Table, Plus, FileSpreadsheet, Download, ToggleLeft, ToggleRight, Edit3, Layers } from 'lucide-react';
+import { X, Upload, Table, Plus, FileSpreadsheet, Download, ToggleLeft, ToggleRight, Edit3, Layers, CheckSquare, Square, CheckCircle2 } from 'lucide-react';
 import { useBackoffice } from '../context/BackofficeContext';
 import { useState } from 'react';
 
@@ -8,6 +8,7 @@ export default function ImportModal() {
     importFileName,
     importSheets,
     selectedImportSheet,
+    selectedSheetsForImport,
     importedData,
     importTargetTable,
     setImportTargetTable,
@@ -21,6 +22,10 @@ export default function ImportModal() {
     hasHeaders,
     toggleHasHeaders,
     updateColumnName,
+    toggleSheetForImport,
+    selectAllSheets,
+    deselectAllSheets,
+    importSelectedSheets,
   } = useBackoffice();
 
   const [editingColumnIndex, setEditingColumnIndex] = useState<number | null>(null);
@@ -75,27 +80,74 @@ export default function ImportModal() {
             {/* Sheet Selection */}
             {importSheets.length > 1 && (
               <div className="mb-4">
-                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">
-                  Select Sheet
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                    Select Sheets
+                  </label>
+                  {/* Select All / Deselect All buttons */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={selectAllSheets}
+                      className="text-[10px] px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded"
+                      title="Select All"
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={deselectAllSheets}
+                      className="text-[10px] px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded"
+                      title="Deselect All"
+                    >
+                      None
+                    </button>
+                  </div>
+                </div>
                 <div className="space-y-1">
                   {importSheets.map((sheet) => (
-                    <button
+                    <div
                       key={sheet}
-                      onClick={() => handleSheetChange(sheet)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                      className={`flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                         selectedImportSheet === sheet
                           ? 'bg-green-500/20 text-green-400 border border-green-500/40'
+                          : selectedSheetsForImport.has(sheet)
+                          ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40'
                           : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
+                      {/* Checkbox for multi-select */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSheetForImport(sheet);
+                        }}
+                        className="flex-shrink-0"
+                      >
+                        {selectedSheetsForImport.has(sheet) ? (
+                          <CheckSquare size={16} className="text-purple-400" />
+                        ) : (
+                          <Square size={16} className="text-slate-500" />
+                        )}
+                      </button>
+                      {/* Sheet name - click to preview */}
+                      <button
+                        onClick={() => handleSheetChange(sheet)}
+                        className="flex-1 flex items-center gap-2 text-left"
+                      >
                         <Table size={14} />
-                        {sheet}
-                      </div>
-                    </button>
+                        <span className="truncate">{sheet}</span>
+                        {selectedImportSheet === sheet && (
+                          <span className="text-[10px] text-green-400 ml-auto">(preview)</span>
+                        )}
+                      </button>
+                    </div>
                   ))}
                 </div>
+                {selectedSheetsForImport.size > 0 && (
+                  <div className="mt-2 text-xs text-purple-400 flex items-center gap-1">
+                    <CheckCircle2 size={12} />
+                    {selectedSheetsForImport.size} sheet{selectedSheetsForImport.size > 1 ? 's' : ''} selected for import
+                  </div>
+                )}
               </div>
             )}
 
@@ -292,8 +344,10 @@ export default function ImportModal() {
           <div className="text-xs text-slate-500">
             {importTargetTable
               ? `Data will replace "${masterTables[importTargetTable]?.label || importTargetTable}"`
+              : selectedSheetsForImport.size > 0
+              ? `${selectedSheetsForImport.size} sheet${selectedSheetsForImport.size > 1 ? 's' : ''} selected for import`
               : importSheets.length > 1
-              ? `${importSheets.length} sheets available`
+              ? `${importSheets.length} sheets available - click checkboxes to select`
               : 'Data will be imported as a new table'}
           </div>
           <div className="flex gap-2">
@@ -303,23 +357,39 @@ export default function ImportModal() {
             >
               Cancel
             </button>
+            {/* Multi-sheet import buttons */}
             {importSheets.length > 1 && !importTargetTable && (
-              <button
-                onClick={importAllSheets}
-                disabled={!importedData}
-                className="px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg text-sm font-medium flex items-center gap-2"
-              >
-                <Layers size={14} />
-                Import All {importSheets.length} Sheets
-              </button>
+              <>
+                {/* Import All Sheets */}
+                <button
+                  onClick={importAllSheets}
+                  disabled={!importedData}
+                  className="px-4 py-2 bg-slate-600 hover:bg-slate-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+                >
+                  <Layers size={14} />
+                  All {importSheets.length}
+                </button>
+                {/* Import Selected Sheets */}
+                {selectedSheetsForImport.size > 0 && (
+                  <button
+                    onClick={importSelectedSheets}
+                    disabled={!importedData}
+                    className="px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+                  >
+                    <CheckSquare size={14} />
+                    Import {selectedSheetsForImport.size} Selected
+                  </button>
+                )}
+              </>
             )}
+            {/* Single sheet / Replace import */}
             <button
               onClick={importTargetTable ? confirmImport : createNewTableFromImport}
               disabled={!importedData}
               className="px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-slate-700 disabled:text-slate-500 text-black rounded-lg text-sm font-medium flex items-center gap-2"
             >
               <Download size={14} />
-              {importTargetTable ? 'Import & Replace' : 'Import Selected Sheet'}
+              {importTargetTable ? 'Import & Replace' : 'Import Current Sheet'}
             </button>
           </div>
         </div>

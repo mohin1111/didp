@@ -5,6 +5,7 @@ import {
   RelationshipModal, MatchConfigModal,
 } from './modals';
 import { MasterDataSection, ProcessingSection, OutputSection } from './sections';
+import DebugOverlay from './utils/DebugOverlay';
 import { Database, Clock, X, MousePointer2, GitCompare } from 'lucide-react';
 
 function BackofficeContent() {
@@ -91,6 +92,9 @@ function BackofficeContent() {
         <ProcessingSection />
         <OutputSection />
       </div>
+
+      {/* Debug Overlay */}
+      <DebugOverlay />
     </div>
   );
 }

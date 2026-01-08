@@ -179,6 +179,8 @@ interface BackofficeContextValue {
   setImportSheets: React.Dispatch<React.SetStateAction<string[]>>;
   selectedImportSheet: string;
   setSelectedImportSheet: React.Dispatch<React.SetStateAction<string>>;
+  selectedSheetsForImport: Set<string>;
+  setSelectedSheetsForImport: React.Dispatch<React.SetStateAction<Set<string>>>;
   importFileName: string;
   setImportFileName: React.Dispatch<React.SetStateAction<string>>;
   hasHeaders: boolean;
@@ -195,6 +197,10 @@ interface BackofficeContextValue {
   importAllSheets: () => void;
   toggleHasHeaders: () => void;
   updateColumnName: (index: number, name: string) => void;
+  toggleSheetForImport: (sheetName: string) => void;
+  selectAllSheets: () => void;
+  deselectAllSheets: () => void;
+  importSelectedSheets: () => Promise<void>;
 
   // Export Functions
   exportTableToExcel: (tableKey: string) => Promise<void>;
