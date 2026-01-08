@@ -192,6 +192,7 @@ interface BackofficeContextValue {
   confirmImport: () => void;
   cancelImport: () => void;
   createNewTableFromImport: () => void;
+  importAllSheets: () => void;
   toggleHasHeaders: () => void;
   updateColumnName: (index: number, name: string) => void;
 

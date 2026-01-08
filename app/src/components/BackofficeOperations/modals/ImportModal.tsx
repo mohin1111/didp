@@ -1,4 +1,4 @@
-import { X, Upload, Table, Plus, FileSpreadsheet, Download, ToggleLeft, ToggleRight, Edit3 } from 'lucide-react';
+import { X, Upload, Table, Plus, FileSpreadsheet, Download, ToggleLeft, ToggleRight, Edit3, Layers } from 'lucide-react';
 import { useBackoffice } from '../context/BackofficeContext';
 import { useState } from 'react';
 
@@ -17,6 +17,7 @@ export default function ImportModal() {
     confirmImport,
     cancelImport,
     createNewTableFromImport,
+    importAllSheets,
     hasHeaders,
     toggleHasHeaders,
     updateColumnName,
@@ -291,6 +292,8 @@ export default function ImportModal() {
           <div className="text-xs text-slate-500">
             {importTargetTable
               ? `Data will replace "${masterTables[importTargetTable]?.label || importTargetTable}"`
+              : importSheets.length > 1
+              ? `${importSheets.length} sheets available`
               : 'Data will be imported as a new table'}
           </div>
           <div className="flex gap-2">
@@ -300,13 +303,23 @@ export default function ImportModal() {
             >
               Cancel
             </button>
+            {importSheets.length > 1 && !importTargetTable && (
+              <button
+                onClick={importAllSheets}
+                disabled={!importedData}
+                className="px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+              >
+                <Layers size={14} />
+                Import All {importSheets.length} Sheets
+              </button>
+            )}
             <button
               onClick={importTargetTable ? confirmImport : createNewTableFromImport}
               disabled={!importedData}
               className="px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-slate-700 disabled:text-slate-500 text-black rounded-lg text-sm font-medium flex items-center gap-2"
             >
               <Download size={14} />
-              {importTargetTable ? 'Import & Replace' : 'Import as New Table'}
+              {importTargetTable ? 'Import & Replace' : 'Import Selected Sheet'}
             </button>
           </div>
         </div>

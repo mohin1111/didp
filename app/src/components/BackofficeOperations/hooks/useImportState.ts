@@ -199,6 +199,46 @@ export function useImportState(
     }
   }, [uploadResponse, importFileName, selectedImportSheet, hasHeaders, tableDataOverrides, cancelImport, refreshTables, setSelectedTables, setExpandedTable, setPythonError]);
 
+  // Import all sheets at once
+  const importAllSheets = useCallback(async () => {
+    if (!uploadResponse || importSheets.length === 0) return;
+
+    const baseKey = importFileName.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+    const importedKeys: string[] = [];
+
+    try {
+      for (const sheetName of importSheets) {
+        let tableKey = `imported_${baseKey}_${sheetName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}`;
+        let counter = 1;
+        while (tableDataOverrides[tableKey] || importedKeys.includes(tableKey)) {
+          tableKey = `imported_${baseKey}_${sheetName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_${counter}`;
+          counter++;
+        }
+
+        await importsApi.confirm({
+          fileId: uploadResponse.file_id,
+          tableKey,
+          tableName: `${baseKey} - ${sheetName}`.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+          sheetName,
+          hasHeaders,
+          category: 'Imported',
+        });
+
+        importedKeys.push(tableKey);
+      }
+
+      // Refresh tables from backend
+      refreshTables();
+
+      cancelImport();
+      setSelectedTables(prev => [...prev, ...importedKeys]);
+      setExpandedTable(importedKeys[0]);
+    } catch (error) {
+      console.error('Error importing all sheets:', error);
+      setPythonError(error instanceof Error ? error.message : 'Error importing sheets');
+    }
+  }, [uploadResponse, importFileName, importSheets, hasHeaders, tableDataOverrides, cancelImport, refreshTables, setSelectedTables, setExpandedTable, setPythonError]);
+
   return {
     showImportModal, setShowImportModal,
     importedData, setImportedData,
@@ -211,6 +251,6 @@ export function useImportState(
     isUploading,
     fileInputRef,
     handleFileSelect, handleSheetChange, confirmImport, cancelImport, createNewTableFromImport,
-    toggleHasHeaders, updateColumnName,
+    toggleHasHeaders, updateColumnName, importAllSheets,
   };
 }
