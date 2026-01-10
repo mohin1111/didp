@@ -3,6 +3,9 @@ import {
   FileCheck, Scale, Percent, BarChart
 } from 'lucide-react';
 
+// Re-export from constants
+export { CHART_COLORS, DEFAULT_SQL_QUERY, DEFAULT_PYTHON_SCRIPT } from './data/constants';
+
 // Process definitions
 export const processes = [
   {
